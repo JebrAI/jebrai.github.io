@@ -14,6 +14,7 @@ Then, everything is wrapped with a "before in each component pass forward" and a
 
 AF1 is the stepping stone towards a fundamental problem we have on a different field of interest, but we should only recognize the patterns used here as one maybe able to discover an efficient AF1 that's better than it's "upgrades".
 While I thoroughly study AP2 and other architectures, the notes will be left here as possibilities for extension for oneself to exercise "How can we improve this" so the reader can delve and realize they're passing an important, guaranteed (something that is built upon, AP2 and AP3 for example. There are possibilities also) questions that are answered in later architectures.
+Due to time barriers, I had to exclude elaborations for specific insights "For another talk". They can be given their deserved thought anytime possible (With insights, not just writing)
 
 Notice: This may be published before polished, maybe even before folding completely. 
 Updates are gradual and links shall be provided along many other hiccups that should be adressed.
@@ -97,6 +98,12 @@ So, unless we're making protein fold in "possible" scenarios, this may not matte
 
 
 Insight: Reinforcement learning
+
+<img width="585" height="405" alt="image" src="https://github.com/user-attachments/assets/e7d18579-a635-48be-ae45-f687d1aacba1" />
+
+
+Source: Reinforcement Learning by Maxim Lapan (A great book)
+
 
 How can you apply reinforcement learning here? Because it has both stochasticity (at the beginning with possible environmental changes), and also has deterministic phases in later stages by decreasing the epsilon-greedy parameter. But that's only intuition, and not truly touching on the main idea of the document! Like increasing stochasticity the more temperature (a Boltzmann parameter now?!) we rise up in the folding process and subsequently decrease the determinism factor.
 
