@@ -185,19 +185,21 @@ Therefore, we can conclude that we have input features AA sequences and MSA alon
 So the model has to learn to map the sequences (along with MSA and SS) to structures (somehow!)
 We use the PDB ground truth to minimize the loss function and update the NN weights. Here, we use two matrices computed from the Cα coordinates to use as target values (ground truth). They're pure mathematics:
 
-- Distance matrix (Remember Pythagoras? Now it's a 3D version of that!!) So distances between two residues are stored in a matrix till we compare the distance between each AA and other in the SAME PROTEIN. Hence, we call it "a distance between specific atoms"
+- Distance matrix (Remember Pythagoras? Now it's a 3D version of that!!) So distances between two residues are stored in a matrix till we compare the distance between each AA and other in the SAME PROTEIN. Hence, we call it a "distance between specific atoms". But the former is more simple, go with it.
+- 
+```
+   M    S    V    T    Q
 
-`  M    S    V    T    Q`
+`M  0  3.8  7.2  12.1  15.3
 
-`M  0  3.8  7.2  12.1  15.3` 
+`S  3.8  0  4.1  8.9   14.2
 
-`S  3.8  0  4.1  8.9   14.2 `
+`V  7.2 4.1  0   5.3  10.1
 
-`V  7.2 4.1  0   5.3  10.1 `
+`T  12.1  8.9 5.3  0  4.8
 
-`T  12.1  8.9 5.3  0  4.8 `
-
-`Q  15.3 14.2 10.1 4.8  0`
+`Q  15.3 14.2 10.1 4.8  0
+```
 
 Close residues (3-4 Å) then a match in helix shapes
 Variable distances then susceptible loops
