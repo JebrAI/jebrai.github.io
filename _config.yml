@@ -1,5 +1,21 @@
-title: JebrAI.github.io
-description: "A comprehensive study towards AlphaFold 1's architecture, intuition and insights"
+title: JebrAI
+description: Described as
 baseurl: ""
-url: "https://jebrai.github.io"
-theme: minima
+url: "https://yourusername.github.io"
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+  auto_ids: true
+
+collections:
+  projects:
+    output: true
+    permalink: /projects/:name/
+
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - vendor
