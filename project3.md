@@ -1,4 +1,10 @@
-
+---
+layout: default
+title: Project 3
+description: An exploration of AlphaFold 1 architecture and intuition.
+tags: 
+github: https://github.com/yourusername/alfafold-project
+---
 # Scope
 
 This document should serve anyone with curiosity towards the 
