@@ -1,0 +1,91 @@
+baseURL: "http://localhost:1313/"
+title: jebrai
+theme: PaperMod
+
+enableInlineShortcodes: true
+enableRobotsTXT: true
+pagination:
+  pagerSize: 20
+
+taxonomies:
+  tag: tags
+
+menu:
+  main:
+    - name: Books
+      url: books/
+      weight: 3
+    - name: Applications & other
+      url: papers/
+      weight: 2
+    - name: About
+      url: about/
+      weight: 1
+
+params:
+  description: "A website that showcases everything that comes to the minds of me"
+  author: jebrai
+  # googleAnalyticsID: "G-XXXXX"
+  DateFormat: "January 2006"
+  defaultTheme: light
+  hideFooter: false
+  disableThemeToggle: true
+  ShowShareButtons: false
+  ShowReadingTime: false
+  disableSpecial1stPost: true
+  disableAnchoredHeadings: true
+  ShowPostNavLinks: false
+  ShowBreadCrumbs: false
+  ShowCodeCopyButtons: true
+  ShowAllPagesInArchive: false
+  MainSections: ["books", "papers"]
+  ShowToc: false
+  disableScrollToTop: true
+  TocOpen: true
+  ShowWordCount: false
+  UseHugoToc: true
+  comments: false
+  math: true
+  profileMode:
+    enabled: true
+    title: Jebrai
+    subtitle: "A self proclaimed scientist (wow)"
+    imageUrl: "profilepicture.jpg"
+    imageWidth: 85
+    imageHeight: 85
+ #   buttons:
+#      - name: Applications and documentation
+  #      url: papers/
+   #   - name: Relatively useful books
+    #    url: books/
+     # - name: About
+      #  url:
+  socialIcons:
+    - name: CV
+      url: cv.pdf
+    - name: Email
+      url: mailto:igelfeld@regensburg.edu
+    - name: Location
+      url: location/
+
+  assets:
+    disableScrollBarStyle: true
+  cover:
+    hiddenInList: false
+    hiddenInSingle: true
+  label:
+    text: "Jebrai"
+    icon: favicon.ico
+    iconHeight: 18
+
+markup:
+  goldmark:
+    renderer:
+      unsafe: true
+  highlight:
+    guessSyntax: true
+    style: autumn
+  tableOfContents:
+    endLevel: 2
+    ordered: false
+    startLevel: 2

@@ -1,9 +1,17 @@
 ---
-layout: default
-title: Project 3
-description: An exploration of AlphaFold 1 architecture and intuition.
-tags: 
-github: https://github.com/yourusername/alfafold-project
+title: "Alphafold: A Deep Dive into Architecture, Intuition and Implementation" 
+date: 2025-10-29
+tags: ["protein structure prediction","alphafold","deep learning","protein modeling","protein folding","protein design","protein engineering","protein dynamics","protein stability","protein function"]
+author: ["Jebraiel J."]
+description: "This markdown document explores the architecture and intuition behind AlphaFold, a deep learning model for predicting protein structures. It provides insights into the motivation behind each idea, problem statements, and solutions, as well as potential extensions and questions for further exploration." 
+summary: "This paper provides a comprehensive overview of the AlphaFold model, a deep learning model (Aas well as other models) for predicting protein structures. It explores the motivation behind each idea, problem statements, and solutions, as well as potential extensions and questions for further exploration."
+cover:
+    image: "paper4.png"
+    alt: "Take a look at this image"
+    relative: true
+editPost:
+    URL:
+    Text: 
 ---
 # Scope
 
