@@ -19,7 +19,7 @@ menu:
       url: papers/
       weight: 2
     - name: About
-      url: about/
+      url:
       weight: 1
 
 params:
@@ -49,7 +49,7 @@ params:
   profileMode:
     enabled: true
     title: Jebrai
-    subtitle: "A self proclaimed scientist (wow)"
+    subtitle:
     imageUrl: "profilepicture.jpg"
     imageWidth: 85
     imageHeight: 85

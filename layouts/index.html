@@ -1,0 +1,71 @@
+{{- define "main" }}
+
+{{- if .Site.Params.profileMode.enabled }}
+<div class="profile-container">
+    <div class="profile-left">
+        {{- if .Site.Params.profileMode.imageUrl }}
+        <div class="profile_inner">
+            <img draggable="false" src="{{ .Site.Params.profileMode.imageUrl }}" alt="{{ .Site.Params.profileMode.imageTitle | default `profile image` }}" title="{{ .Site.Params.profileMode.imageTitle }}" />
+        </div>
+        {{- end }}
+        <div class="profile-info">
+            <h1>{{ .Site.Params.profileMode.title | default .Site.Title }}</h1>
+            <span class="profile-subtitle">{{ .Site.Params.profileMode.subtitle }}</span>
+            
+            {{- /* Social Icons */ -}}
+            {{- if .Site.Params.socialIcons }}
+            <div class="social-icons">
+                {{- range .Site.Params.socialIcons }}
+                <a href="{{ .url }}" target="_blank" rel="noopener noreferrer me" title="{{ .name }}">
+                    {{- partial "svg.html" . }}
+                </a>
+                {{- end }}
+            </div>
+            {{- end }}
+        </div>
+    </div>
+    
+    {{- /* Homepage Content */ -}}
+    <div class="homepage-content">
+        {{ .Content }}
+    </div>
+</div>
+
+{{- /* Recent Projects Section */ -}}
+<div class="recent-projects">
+    <h2>Recent Projects</h2>
+    <div class="projects-list">
+        {{- $pages := where .Site.RegularPages "Section" "papers" }}
+        {{- range first 3 $pages }}
+        <a href="{{ .Permalink }}" class="project-item">
+            {{- if .Params.cover.image }}
+            <div class="project-cover">
+                {{- $imagePath := .Params.cover.image }}
+                {{- $fullPath := "" }}
+                {{- if hasPrefix $imagePath "/" }}
+                    {{- $fullPath = $imagePath }}
+                {{- else }}
+                    {{- $fullPath = printf "%s%s" .RelPermalink $imagePath }}
+                {{- end }}
+                <img src="{{ $fullPath }}" alt="{{ .Params.cover.alt | default .Title }}" loading="lazy" />
+            </div>
+            {{- end }}
+            <div class="project-content">
+                <h3>{{ .Title }}</h3>
+                {{- if .Params.description }}
+                <p>{{ .Params.description }}</p>
+                {{- else if .Summary }}
+                <p>{{ .Summary | truncate 120 }}</p>
+                {{- end }}
+                {{- if .Date }}
+                <span class="project-date">{{ .Date.Format "January 2006" }}</span>
+                {{- end }}
+            </div>
+        </a>
+        {{- end }}
+    </div>
+</div>
+
+{{- end }}{{/* end profileMode */}}
+
+{{- end }}{{/* end main */}}
