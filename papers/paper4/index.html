@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>AlphaFold: Architecture, Intuition and Implementation | jebrai</title>
+<meta name="keywords" content="protein structure prediction, alphafold, deep learning, protein modeling, protein folding, protein design, protein engineering, protein dynamics, protein stability, protein function">
+<meta name="description" content="This markdown document explores the architecture and intuition behind AlphaFold and other. It is not by any means the final product as of december 2025.">
+<meta name="author" content="Jebrai J.">
+<link rel="canonical" href="http://localhost:1313/papers/paper4/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.39e8e3f126f6c7846641e28443539af6227f74f82678fbba9ed25ec26bdac070.css" integrity="sha256-Oejj8Sb2x4RmQeKEQ1Oa9iJ/dPgmePu6ntJewmvawHA=" rel="preload stylesheet" as="style">
+<link rel="icon" href="http://localhost:1313/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/favicon-32x32.png">
+<link rel="apple-touch-icon" href="http://localhost:1313/apple-touch-icon.png">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="http://localhost:1313/papers/paper4/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript><meta property="og:url" content="http://localhost:1313/papers/paper4/">
+  <meta property="og:site_name" content="jebrai">
+  <meta property="og:title" content="AlphaFold: Architecture, Intuition and Implementation">
+  <meta property="og:description" content="This markdown document explores the architecture and intuition behind AlphaFold and other. It is not by any means the final product as of december 2025.">
+  <meta property="og:locale" content="en">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="papers">
+    <meta property="article:published_time" content="2025-10-29T00:00:00+00:00">
+    <meta property="article:modified_time" content="2025-10-29T00:00:00+00:00">
+    <meta property="article:tag" content="Protein Structure Prediction">
+    <meta property="article:tag" content="Alphafold">
+    <meta property="article:tag" content="Deep Learning">
+    <meta property="article:tag" content="Protein Modeling">
+    <meta property="article:tag" content="Protein Folding">
+    <meta property="article:tag" content="Protein Design">
+    <meta property="og:image" content="http://localhost:1313/papers/paper4/paper4.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://localhost:1313/papers/paper4/paper4.png">
+<meta name="twitter:title" content="AlphaFold: Architecture, Intuition and Implementation">
+<meta name="twitter:description" content="This markdown document explores the architecture and intuition behind AlphaFold and other. It is not by any means the final product as of december 2025.">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Applications \u0026 other",
+      "item": "http://localhost:1313/papers/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "AlphaFold: Architecture, Intuition and Implementation",
+      "item": "http://localhost:1313/papers/paper4/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "AlphaFold: Architecture, Intuition and Implementation",
+  "name": "AlphaFold: Architecture, Intuition and Implementation",
+  "description": "This markdown document explores the architecture and intuition behind AlphaFold and other. It is not by any means the final product as of december 2025.",
+  "keywords": [
+    "protein structure prediction", "alphafold", "deep learning", "protein modeling", "protein folding", "protein design", "protein engineering", "protein dynamics", "protein stability", "protein function"
+  ],
+  "articleBody": " S-RES:2601.v1 | AUTODIDACTUS Scope This document should serve anyone with curiosity, as we’ll cover:\nBasic protein knowledge (no promises), The field of proteins as a whole, as well as providing potential data ingestion in case you’ll be delving further in that field, Problem statements along with their solutions, by fitting the (refined) data to a (relatively custom) model, Core concepts of the architecture, And lastly what could be used to extend the idea itself of AlphaFold 1, as well as questions that have incurred to me personally while attempting to understand the architecture motivation and the interconnected nature of everything. These are thrown throughout the document as “insights” and in a (relatively) simple methodology of demonstration. However, it is favorable for the reader to absorb it however they like. Everything is wrapped with a “before in each component pass forward” and its after to enhance the Engineering aspect. There is a that serves a bigger picture on what we’ll be dealing with for later stages, as well as solidify our understanding towards each components role.\nExtension While there will be a thorough study towards AlphaFold 2 and other architectures, the notes will be left here as possibilities for extension for oneself to exercise the muscle of “How can we improve this?”, prompting that the reader has the ability to delve and realize they’re passing an important, guaranteed (something that is built upon, AF2 and AF3 for example. There are also other possibilities) questions that are answered in later architectures.\nThe reason (we) chose AlphaFold 1 (with extension potential mentioned in Foreword) and not its modern variants (AlphaFold 2’s breakthrough) is due to the foundational approach towards the problem at hand.\nYou’d notice that a prototype architecture would contain several distinct modules, similar to the idea of “making it happen and perfect it later”.\nIn all intentions here lie on gaining intuition that will matter later on either on the same exact task and the elaborative extensions, or the in different disciplines (the science of adaptability). Hopefully that will serve as your “purpose” in reading the document at hand.\nConsiderations:\nThis may be published before polished, maybe even before folding completely, meaning that some text are also thoughts immediately jotted down, which will be separated from practicality with each revision. Some images are clickable and have links in them. Be careful clicking any links before the final revision is out (HTTP etc.). Some sources are also linked partially or fully, even though they’re not the entire source in many of the text linking it. The document may be separated due to how large it is currently, but there will be attempts in making them fit to keep it holistic and central. Any feedback of any form is welcome.\nBrevity To avoid repeating “AlphaFold X by DeepMind”; AFX is the norm,\nAminoAcid abbreviation of “AA” which is used synonymously with “residue” or “res”,\nalong with the abbreviation of Angstroms “Å”: “Ang.”\nReinforcement Learning: “RL”\nProtienDataBank: “PDB”\n….\nOther abbreviations are made on-spot.\nThere are also cases for alternating between them for clarity and intuition.\nForeword There are many architectures that have been placed in the record for the “protein folding” problem:\nAlphaFold 1, which is our main topic; What AF1 (AlphaFold 1) basically did:\n‘Alphafold uses advanced biotechnology and AI to help determine longer protein structures over a shorter period)’. This is the simplest algorithm (least devouring of data as well as the complexity threshold), but is the most non end-to-end “solution” (several components and “externalities”), which also lays groundwork and first-hand intuition on the problem statement. AlphaFold 2 and its extensions: 2.3, and multimer which emphasizes a minor role in protein-protein interactions (some improved IDRs capturing capability), but it did well in the static protein-protein complexes (see AlphaFold | EMBL-EBI Training as well as https://elearning.vib.be/courses/alphafold/lessons/the-alphafold-pipeline/topic/overview-of-the-architecture/). AlphaFold 3, which is abit out of the current scope: Prediction of interactions not just of proteins, but also DNA, RNA, small molecules (ligands), ions and chemical modifications. Purpose Understanding why proteins fold is important towards understanding the problem statement, along with the motive of this entire interaction between the five fields (Biochemistry in the interactions, Bioinformatics and genetics relating to MSAs, Artificial intelligence (attention, Evo-former, diffusion, etc), Structural Biology as in the decades-old dataset of PDB and experimental methods. And finally; Medicine and Biotechnology, which are currently the primary beneficiaries (think of it as the biggest “To-dos” after a breakthrough), using the insights derived from the other fields to:\nAccelerate drug discovery. Drugs typically work by binding to specific protein targets in the body (a receptor on a cell, or an enzyme in a pathogen, or ). So if we know the precise 3D structure of a target protein, we can design small-molecule drugs that fit perfectly into its active site see thisand that! Understand and treat diseases along with predicting disease-causing mutations, as misfolded proteins are associated with a range of severe conditions (particularly neurodegenerative like Alzheimer’s, Parkinson’s and Huntington’s) as well as some cancers. So by understanding how they misfold, we can design therapies to stabilize them or maybe enhance the cells natural quality control systems, or maybe even prevent the formation of the toxic aggregates that starts them all. Along with others mentioned in the Disease prediction section. Synthesize more proteins. Maybe designing industrial enzymes that can break down plastic waste, creating more resilient crops, and many other. Summary:\nIn AF1, we deal with a single protein, predicting how it will fold. Then, as the extension occur, we deal with complexes in AF2’s multimer (along with single proteins in AF2 ver. 2.2). Lastly, we expand our capabilities of the two mentioned structures, all to view the wide range of biomolecules and predict their structures also. Any relatively interesting detail will be added along the way.\nThe Problem Statement The “protein folding problem” is actually three parts:\nThe folding code (Thermodynamic questioning, basically the explicit rules of folding), they’re the interactions that will be mentioned in the bigger picture Protein structure prediction. The static, single structures has been already determined) (What we’re doing in the Engineering section). This provided the blueprint by having a static map of nearly all known proteins. Understanding the actual physical process and mechanism by which a protein folds in nature, including the kinetics and intermediate states. Meaning that we understand “why” proteins fold the way they do, so efficiently and without random searches. This question is totally out of scope of this document. AlphaFold generally goes with (2) without having explicit inputs of the folding code (1) nor attempt to explain the models outputs (3). There are, however, some current case(s) of utilizing the explicit inputs of the folding code (used here in AlphaFold 1) indicated at Outputs, as well as later in AlphaFold 3s input. Regarding (3), this can possibly be examined in the model weights, but it is currently a black-box when relating it to AlphaFolds (complex architectures that weights aren’t as easy to examine), that is, if we attempt to understand the algorithms output (probably a first-approach is finding a heat-map of activations just like how we did in CNNs and attention as indicated in the image below, but it is more complex the deeper the architecture is). We can also possibly build an XAI (Interpretable AI that its internal logic is understandable) to explain the currently epistemically opaque weights of the complex architectures. Either ways, it is definitely out of scope and may be included in future extensions.\nSource: https://johfischer.com/2022/01/27/class-activation-maps/ Linear combination of the weights and feature maps to obtain the class activation map\nIn other words;\n“AlphaFold” in general predicts the final structure, but it does not fully explain the dynamic process of how it gets there in a biological system, nor does it address the other protein formalisms fully, which are mentioned below. There are also an important conclusion: we may need only the AminoAcid sequences as a “manual” in the folding process, (more on that here) Which comes from the mass-feeding of the data to the target model (in which it earns the intuition and pattern-recognition from thousands of samples). This proved to work (in the case of OpenAIs GPT-3 and many other LLMS) when scaling complexity and data, till reaching a certain plateau that requires a redirection to innovating newer architectures or maybe re-framing the current use of what we have. More on that at the AlphaFold Protein Structure Database (AFDB)).\nCancer Stem cells “The cell sizes of whales aren’t bigger than a mouse’s, it’s just that the whales have more cells”\nSmall insight:\nThe use of crystallography and OTHER techniques in identifying protein structure. They’re an accurate way of figuring out the structure of proteins, but have you ever thought of other techniques, like Nuclear Magnetic Resonance (NMR), spectroscopy, Cryo-EM)? Well, if you go even deeper in that branch, you’d also realize the potential of Machine Learning application towards traditional techniques like crystallography and these other techniques. In the formalisms section, there is a “realization” of using some of these experimental techniques in solving the current frontiers of problems revolving around the protein.\nContinuing, the point that is trying to get across is that there can be a Machine Learning algorithm as an “Aid’er” or more professionally, a “Helper algorithm” in these techniques themselves. Meaning that besides a ML framework taking the core idea and digest (AF1), we’d have it as a secondary component that aids in the function of the core algorithm (or experiment if we’re specific).\nIt also takes some form of delusion, too (mind you). As this is useful as a possibility opener if one is truly passionate about proteins and can open DOORS one couldn’t have IMAGINED!! (yes, yes, bla bla) as long as it doesn’t distract one from pursuing a single technique to their subjective creative limits, or however your working philosophy may apply.\nFormalisms and evaluation Some highlights in bold are of relative significance\nSo, we conclude that:\nProteins are dynamic, not static: they’re constantly moving, twisting, changing shape in a biological environment. So when they perform their functions, say, binding with other molecules for example, any “Alphafold” predicts one molecular photo similar to a static shot of a protein folded, but since proteins are dynamic and aren’t yet captured by any “AlphaFold” model in particular, mentioning some more of the dynamics: Transition states: The specific intermediate shapes it temporality adopts moving between stable states (example being its interpolation between “open” and “closed” form). IDRs: Some parts of proteins are naturally and inherently unstructured and flexible till they bind with their partners. This is actually crucial to interact with a wide range of client proteins. Real-time atomic fluctuations: Constant and rapid vibrations of chemical bonds and residues. Some experimental techniques (the one finding the structure of the protein itself) which are NMR and spectroscopy and FRET, along with molecular dynamics simulations do DESCRIBE the conformational changes and the continuous flexibility and movement of the proteins in their natural environments. All of which would be key in figuring out not just one possible conformation, but all of their potential conformations per protein (one protein or a single “polymer”) or complex (multiple proteins… the computation outlook seems large). Their methodology revolves around stacking multiple protein structures (ensemble) and transitioning between them from rapid atomic vibrations to slower domain rearrangements, which is somewhat related to Markov’s formalisms of Partially Observable Markov Decision Processes in Reinforcement Learning, where we also (generally) stack frames when this problem arise (again! for later. And this is not the only method!). Back at the experimental methods, there is a foreseeable future of datasets containing these just like PDB and such. Well, there is apparently a method in combining multiple datasets, as well as developing NMR-only datasets like the one mentioned here. The only thing we can do is wait for more NMR dataset instances… unless we find out a faster technique or use what we have now (including the NMR or not).\nSo we can safely say that the protein folding process isn’t a one-time event.. It is a dynamic and often reversible process. Some need the help of other proteins to fold (chaperones), some unfold (denure) physiologically (like the natural process of protein refolding in muscles to allow muscles to stretch and recoil), others unfold to certain conditions. Amazing!!\nThe functional and interactional formalism: which would describe the proteins activity within the broader cellular context, interacting with other molecules and their surroundings (Protein-Protein interactions, Ligands, DNA: Which all seem to be partially or fully the target of AlphaFold multimer and Alphafold 3. They’re still not following the first formalism, though) to preform specific biological functions. It would involve: Network dynamics: One a proteins action influences the behavior of an entire cellular pathway or network of interacting molecules. Kinetic properties: The rate and speed of biological reactions and interactions (enzymes kinetics, etc) Allosteric regulation: The binding at one side on a protein affects the function at a different, distant site by changing the proteins shape along with its dynamics. Environmental effects like solution conditions (pH, temp, salt conc) and presence of other molecules (ligands, other proteins) on the overall behavior of the protein. There are also point mutations, which implies a single AminoAcid mutation that caused a structural defect. Similar to a pawn being promoted to a queen in chess that wrecks havoc on the advantage bar which may be related to Reinforcement learning, too. This is also similar to the Network dynamics and allosteric regulation. Point mutations are the trigger of an ensemble of cascades of events. These are the structural basis for diseases, more on that at the Disease prediction section.\nIt is advised to re-read this section after we’re done with the small biology lesson.\nA Small Biology Lesson: Proteins are made from instructions made by the DNA, and the RNA (the messenger of DNA). It, the protein, then folds to a 3D structure to do a specific function in the body. The structure itself is destined by a mostly deterministic process (i.e. native conformation).\nMore on that at PDB bias section.\nSource: https://en.wikipedia.org/wiki/Homology_modeling an image of the DHRS7B protein (dehydrogenase/reductase 7B) created using Ribbon diagrams and rendered with PyMOL\nThe AminoAcid sequence is the linear order of amino acids in a protein chain (referred to as the backbone or the “main chain”), meaning that we’re currently hitting the main component of the protein structure.\nAminoAcids (AA’s) are made up of a carbon atom with a carboxyl (COOH, acidic) and an amine group (NH2, written H2N which is a base) each to the center (the carbon). The north bond being the Hydrogen on the north, and the last bond (south of the AA, called R group) would be either of the side chains.\nPlease don’t mind the pole directories I mentioned.\nSource: Veritasium, attempting multiple different side chains, which are later binded to other AAs forming a linear chain (that is different from a side chain). That straight line represents a linear chain of the carbon (center of the amino acids!), each bound to a side chain [till they form a protein or become part of a complex?]\nThis random choice between different side chains ends up forming the 20 AA’s that exist in nature, not taking into account the unknowns, and the rare AA’s. They’re encoded in Alphabetical names, such as “U” for the Selenocysteine AminoAcid (there are some not encoded with their respective starting word). The unknown one(s), or harder to distinguish between other AminoAcids are as following:\nB (Difficult; may be a D or N),\nZ (Difficult; may be E or Q),\nJ (Difficult; may be L or I) and finally:\nX(Undetermined or any unknown AA. Very interesting).\nAlong with the rare AA’s, which are the AA’s no. 21 and 22 respectively:\nU and\nO\nSome of these are not needed in human trials, for example the O, found in certain archaea and bacteria unless there are specific needs or research to be conducted on these organisms.\nYou can call the 22 AminoAcids “Proteinogenic” AminoAcids, which implies that they are used for building the protein from the sequencing and folding process. It’s important to note that there are over 500 naturally occurring AminoAcids that have been identified, in which case are called “Non-proteinogenic” AminoAcids. They are beyond the scope of proteins and the alphabetical order, as in they do not serve the function as to become proteins, but they serve other biological functions. The potential of creating newer AminoAcids, however, are being researched by modifying the R group (the “legally” modifiable part). Unless you modify the core parts (COOH and NH2), in which the AA may not be recognized by the cells machinery\nSource: https://www.ml6.eu/en/blog/esm3-the-frontier-of-protein-design\nSequence determines structure, structure determines function — and .. Oh, wait:\nSource: https://pmc.ncbi.nlm.nih.gov/articles/PMC12467925/ an amazing article about the De novo protein design of “RF diffusion”. They also have an amazing table on the protein-design workflow!\nSo we hit a “RF diffusion” spot here, where we can and are able to “create” proteins for specific functions (extremely cool I know!) that we dictate (inputs being PDB) in a model for it to produce a 3D image of the protein design. They use the Proteinogenic 20 (sometimes the other two) for this, not by creating new AA’s! The process is very similar to creating images using AI, Briefly; having noise at the beginning, then iteratively removing the noise to generate a new protein structure that is a “plausibly folded structure”, maybe even incorporating a novel proteinogenic AminoAcid (engineered) in the diffusion process (or other parameters like symmetry specifications and length ranges). Keep in mind that this is a generated backbone, and we still don’t know its sequence of AAs.\nSmall note: It is very similar to predicting the next word in a sentence, where we iteratively remove the noise, and the model starts seeing patterns linking the text of description we gave (tokens) to its embedding space tokens. Its also similar to seeing patterns out of a seemingly redundant static noise. Whatever, It is deemed for another talk.\nSource: https://zontal.io/rfdiffusion-leveraging-the-power-of-ddpms-to-generate-protein-sequences-and-structures-2/\nThere are more nuances to that, such as using ProteinMPNN to design a sequence of AAs that is most likely to adopt that specific 3D shape, then use AF 2 or 3 to verify the structure viability (sanity checking if it will fold back into the designed structure) before costly lab synthesis begins, that is, if we were attempting to create the protein.\nPsst! This model is a fine-tuned version of the RoseTTAFold structure prediction network (similar to AlphaFold)! Check out BakersLab!!\n[More on that is a potential for integration in this article]\nBuilding up from the smallest to the biggest protein component The levels of protein structure are as follows:\n1) The Primary Structure These are the most fundamental level of “structure”, which refers to the linear sequence of AminoAcid themselves. The covalent bonds (Called “peptide bonds” here, linking an AA with the other. and sometimes called disulfide) are keeping them intact (more on that below). Contrary (Opposite) to the interactions other than that, which are to be considered “absent” within the primary structures stability and integrity under stress.\nSource: https://www.genome.gov/genetics-glossary/Amino-Acids\nThere are also conformational freedom, which are by the partial double-bond, which are also called “trans conformation” of the peptide bond between two AA’s and its strength is between single and fully double bonds. What matters here is that the angle is nearly always fixed at 180 between only two AA’s, conveying a planar structure. So the bond has the proteins on a “strong approximation” set of an absolute physical constant angle called 𝜔 (omega).\nNote: The Carbon (C𝛼) backbone are bonded with NH2 (single bonds, flexible) and have an angle, which are called Phi ϕ torsion angles, while the Carbon C𝛼 and COOH bonds angles are called Psi 𝜓 torsion angles.\nThe “Ramachandran plots” are the plots defining the sterically allowed conformations of the psi and phi angles (so atoms wont go crashing on each other).\n2) The Secondary Structure: These are alpha helices and beta sheets. The existence of specific and stable Secondary Structure\nSource compressed: The main chain (called the Cα coordinates)\n3) The tertiary structure Since the tertiary structure is the overall, complex 3D shape of a single polypeptide chain, which includes all the secondary structure elements and how they fold, there is a conclusion that the proteins tertiary structure (the 3D fold) is determined by the interactions between the AA side chains (R group) and between other side chains with other! Their interactions (more on interactions below) cause the stabilization of the 3D shape, there is also an influence between side chains and the atoms of the peptide backbone.\nThe stressors of proteins are heat, pH salinity and other chemical treatments that make the protein “denure” (to break down), with the exception of one structure:\nHaving the primary structure intact during stress provides renaturation potential! Implying that for the other two structures (SS and TS), which are greatly affected by the stressors of proteins, can REFOLD back (with gentle reintroduction to its normal conditions) to its correct functional tertiary structure all due to the proteins primary structure. The only thing(s) that can break the proteins primary structures are harsh chemical treatments or specific enzymatic action (proteolysis) to break the covalent bonds. This deserved to be at Disease prediction\n4) Quaternary Structure For the last structure, there is Quaternary protein structure (complexes), which has proteins consisting of the (1), (2), (3) structures, called now “subunits” (two or more proteins in the entire complex) that we mentioned.\nSummary:\nSource: https://www.khanacademy.org/science/biology/macromolecules/proteins-and-amino-acids/a/orders-of-protein-structure (Honestly an amazing demonstration for the bigger picture view, maybe have some terminologies in brackets like pleated sheets should be “Beta Pleated sheets” but that’s only to aid beginners in learning structure terms).\nWe can conclude that\nIn our static protein structure prediction problem, we can safely say that the strongest predictors are their primary structure, the sequences. It is a deterministic way of finding out the final 3D structures. Their properties also matter:\nThe order of AA’s: Which is the primary structure predictor. This contains all the information needed for the protein to spontaneously fond into its correct, functional 3D shape.\nThe types of AAs\nThese two together are crucial as they dictate which interactions can occur in one of the two interactions; the predominant non-covalent interaction(s): hydrophobic effects, H-bonds, van der walls forces and salt (ionic bonds) bridges. They are weak individually but act together (thousands of them!) to stabilize the protein. Their drawbacks is that how easily they’re disrupted from heat or changes in ph. We also assume no extraordinary environmental conditions as mentioned in PDB bias.\nAnd one covalent interaction: disulfide bridges (or bonds). These bonds are stronger than the former mentioned non-covalent bonds. There is already a foreseeable potential of its aid in the Disease prediction section, maybe also a previous section that you can connect to.\nThese interactions as a whole put us on the importance of the 2) MSA MSA). Which has one sequence far away from the other (in the same chain, speaking of a single protein) that are touching [Important finding!]\nThe No. of AA’s which defines the overall length of the chain. This is relevant because it defines the size and complexity of the resulting structure. The longer the chain the more opportunities it has for more folding The interactions were not explicitly fed to the algorithm. It implicitly learned the the. Maybe that’s for the best, as sometimes exploration (RL!) is more important. Although in AF1, it is fed during Stage two. In other architectures, however, it is learned implicitly through the scaling of the network and data.\nKeep in mind that we have protein (or related) “lessons” also scattered around the document, as some information will be pulled when required.\nNow, let us us demonstrate the data main dataset at hand:\nPDB The central protein databank has explicit entries of:\nThe 3D atomic coordinates (fundamental target data for later) which allows the visualization of the final static snapshot of the folded protein. This is a very precise X, Y and Z location of every non-hydrogen atom (sometimes hydrogen) in the resolved structure.\nBound Ligands/Molecules which are coordinates of water, ions (zinc, magnesium), drug molecules that are bound in the structure. They are non-proteins that were co-crystalized or co-solved with the proteins.\nMultiple conformations (limited): NMR ensembles are models, meaning a small set of 10-20 representative coordinate sets\nSecondary Structure (SS) assignments (derived from 3D structures for a deterministic assignment, and derived from the AA sequence for a probabilistic assignment).\nSource: https://www.sciencedirect.com/science/article/pii/S0079610716300499\nExperimental metadata:\nExperimentation methodology: X-ray crystallography (traditional, accounting for ~87% of all the PDB archive), NMR (, Cryo-em (Cryo is advancing rapidly!), which are the big three used in PDB. There are still other techniques used like SAXS, CD and other. Maybe also the experimental conditions that are crucial as indicated in the Formalisms and evaluation section The resolution or quality of the data, where higher resolution indicate a better “zooming in” the protein to identify the structure and its fine details. The higher the (Ang.), the lower resolution that we get. Similar to a pixelated photo, you can see the backbone, but not the individual parts like atoms and side chains and the opposite applies here. R-factor and R-free, B-factors, clash score, RSR and other. Check out the amazing documentation BY PDB assessing the quality linked here Source organism, and other data like sample preparation and refinement statistics. The potential of application (of the quality and metadata) relies on their ability to be ingested to the Neural Network (NN) and to reduce their weight, as the less accurate the experimentally decided structure is the lower value we have on its potency to the predictions outputted. Surface side chains, disordered regions and flexible loops are other examples on weak or no experimental data due to their inherent motion or disorder in the experiment. They can be useful, however, if we were trying to innovate something here…\nSome of which should be derived (not explicitly stated):\nProtein dynamics and flexibility Allosteric Mechanisms Network dynamics IDRs Point Mutation Effects Active identification and enzyme mechanisms Protein-Protein interaction (PPI) interfaces Protein Stability Remember the second formalism of proteins? The one about enviroments?\nMeaning that we have DATA from the infamous ProtienDataBank (PDB), in which (commonly) gotten from the X-ray crystallography has an environment which probably misses:\nNon-physiological PH or salt conc. (These were used to force crystallization) Low temperatures (almost always, unless specialized experiments. Room temperature is increasingly becoming the norm here) Absence of binding partners or cofactors that normally are present Dehydration, etc PDB bias *This follows the aforementioned Formalisms and evaluation. It also uses “AF1” (our target understanding algorithm) to demonstrate the use of PDB. Targeting the missed second formalism as well as other notions\nProtein folding, as a problem statement in itself is both a deterministic (somewhat NOT random) and stochastic process (somewhat random). Its determinism comes from the AA’s specific sequence, as most proteins with the exact same AA sequence have obviously the same shapes (scientifically, the “lowest-energy state”), while the environmental factors and random thermal motions (pH, ions, ligands, etc) add the stochastic elements in the folding process.\nAF1 uses the deterministic side of the equation. In other words, they assume stable environmental and specific laboratory conditions. At the worst case scenario, there there will be misfolding, and all the bad things could happen if a protein is introduced to an extreme environment.\nAt every other scenario, even a fever of 39c or so, there is little to no effect to the protein and stochasticity which implies a more deterministic outlook that we have currently have (sufficient average determinism). Only after that point, though, does it compromise proteins and its folding process, and the chances increase from thereon.\nThe uncertainty in AF1 predictions, where even a 1-2Ang. difference is considered uncertain, is much larger than a 2C shift in temperature. Though marginal activity may drop but still has no significant effect, maybe even more “flexible” and within biological tolerance (The effects that I’m currently aware of. DO NOT solidify that as a foundational barrier to your brain).\nTherefore, unless we’re making protein fold in “possible” scenarios, this may not matter as much. It’s great to keep this in mind, though, as maybe you’d want to make a fever model or a very mythical application in which I do not endorse, maybe a certain environment-based protein folding process in the future that adds on to that layer, or something according to your liking.\nAnd also to note that there are other databases (DB) that were used by AF1, such as UniProt (big brain), Uniclust (targeted brain), BigFantasticDatabase (BFD) and MGnify. Some of which DBs are related to the protein itself and its sequence and such, and the other may be related to the 2) MSA MSA). These were skimmed as we’ll give them their fair chance later on in the engineering part.\nIn the Potential data integration section, there can be an extension when looking at the several different and unmentioned tools that we have, depending on what we want to model in the first place.\nAlphaFold Protein Structure Database (AFDB): Now we know about the Protein Data Bank (PDB) and many other available Databases to tackle the protein folding problem, it’s great to know that the predictions utilizing the PDB database (the one we’re building for example) have their own database of predictions. There are over 200 million protein “highly accurate” structure prediction from the AF2 algorithm. We have the confidence scores of the fold predicted compared to the structure from the PDB called per-residue confidence score (pLDDT, which should be over ≥ 90 to be considered “Very high confidence”).\nSource: https://www.mdpi.com/1420-3049/28/22/7462 Red shows high confidence areas and blue indicating a lower confidence score. They were used as primary losses in AF2.\nThe lower we go, the more likely we reach a “flexible” protein zone of prediction, meaning that the algorithm cannot predict it well (or it doesn’t have the information that’s “satisfactory” level to model these, or maybe they’re just random regions or coils “IDRs”).\nThese aren’t ground truth data per se, but they have the potential to serve something, like maybe giving it to the scientists once again to save time evaluating it’s structure if we’re already at ~90% (confidence when experimenting on newer proteins). As for the their accuracy, it turned out that the predictions were actually comparable to an experimentally determined structure, as maybe we’ve had the majority of the data handed by the PDB is labeled as the “predicted and replicated” stage relative to AFDB. Experimentations done there may reveal useful outliers but the generalist model for this very specific task seems to be going towards completion (with a human-in-the-loop!). Here’s the catch: its limitations stem at a what it cannot do,meaning that although we have solved the “structure prediction” problem, the proteins are dynamic and w\nNevertheless, it’s great to mention AFDB\nIt is also to be noted that reliance on predictions to make predictions (or in other words relying on theories to make a theory) isn’t in essence a bad thing,\nas maybe theory 1 may be right (proved or assumed from the conclusions it produces). which makes all the other theories it produces plausible.\nReinforcement learning Source: Reinforcement Learning by Maxim Lapan (Cool book)\nHow can you apply reinforcement learning here? The insight was mainly formed Because reinforcement learning (RL) has both stochasticity (at the beginning with possible environmental changes), and also has deterministic phases in later stages (by decreasing the epsilon-greedy parameter) in some foundational algorithms. But that’s only intuition, and not truly touching on the main idea of the document! Like increasing stochasticity the more temperature we rise in the folding process, and subsequently decrease the determinism factor in it! That’s a similarity remark in processes, which doesn’t provide actual “insights” unless\nYou can start small, because the reward signal maybe is the challenging part. As some are sparse and some are goal-based rewards (which require knowing the answer),\nBut if we think about it as a non-originator algorithm (not being the core algorithm), RL may shine in refining coarse predictions from AF1 itself, that part that AF1 missed which is the stochastic parts, in which we have:\nState: Current structure from AlphaFold, as well as the MSA and probably every data ingested at the Implementation and Intuition Action: Local perturbation (adjust a region) Reward: Energy decrease + structural validity Policy: Learn to make smart local adjustments that respect physics! Maybe if we even incorporate video output to the pipeline, for the algorithms to have a chance in modeling the complexities and incorporate a game just similar to Foldit (molecular dynamics intact and have a state), then, we can probably think about their practical extension and application (along with adding players back into the field… or any other field, really).\nImplementation and Intuition: Bigger Picture [Are they really not using physics module anymore? meaning the explicit stage] There is an input, and there is an output (Stage 1). Then, there is a Structural Construction stage, where we utilize physics-based constraints on all the inputs from stage 1 to get the final 3D coordinates. Then, optionally, we attempt to reduce the energy to its lowest possible energy state (of course, based on what the model can handle with its current complexity!) using also a physics-based energy minimization. This third phase uses the 2nd stage as input and has an output of a refined 3D coordinates implying a yay!-level-lower-energy state of the protein predicted.\nBut since most architectures aren’t using the “physics” aspect as modules anymore, as that they avoid explicitly encoding the physics by gaining enough PDB examples, one can safely say that there is a way to skip that part to learn the lowest-energy state (the folding process) and go pure pattern recognition from MSA’s and Structural data. This is a possibility to note.\nAF1 didn’t represent the minimum complexity of modeling proteins, it achieved a rather significant advancement than template-based modeling (same protein == same structure) and Ab initio which uses physics energy functions to simulate folding (in which also rarely worked well, but hey, potentials are everywhere). Basically, you can say AF1 is the proof-of-concept that one can apply DL techniques on proteins, with other architectures using the same dataset of PDB, also using different methods such as eliminating MSA and such.\nMaybe all it needed was more essentials and lesser complexity.\nTraining The inputs to the Neural Network are as follows:\n1) AA sequence: It is given from PDB as a three letter word; ALA for Alanine, CYS for Cysteine, ASP for Aspartic Acid, etc) that we convert to their standard one-letter codes that we mentioned in A Small Biology Lesson.\n“MKTAYIAKQRPGLV” an example. They can be subunits as in quintenary structures (hemoglobin, which has 4 subunits of these sequences) or a simple sequence of a single protein.\n2) MSA: In simple terms, we see if two AA stay conserved across different specifies and other AA that may have co-evolved. Meaning that they mutate together, and that often signals that they’re often close in physical contact when folded to 3D structure. This is crucial input to the NN.\nTake a single protein for example, we’ll call it hemoglobin as a scientific name over “blood” (Bear with me for the simplification):\nMKTAYIAKQRPGLV\nSo if we say that “M” and “T” are pretty close in that 1D sequence, it may be temping to say they are close to each other in 3D. but proteins can surprise you with how far they actually are. One can be only a single position away in the sequence\nFor this specific case, these are called structural significance. As in, M and T maybe are not close in 3D space, but they are important for the structure itself. Don’t mix the two ideas.\n[Sudden introduction to MSA]\nImagine the same protein in 1,000 different species: ```\nHuman: MKTAYIAKQRPGLV... Chimp: MKTAYIAKQRPGLV... (99% identical) Mouse: MKTAYISKQRPGLV... (changed position 7: A→S) Fish: MKTVYISKERPGLV... (changed positions 4,7,9) Bacteria: MKTVFISQERPKLV... (many changes) Say that we conclude that positions 7 and 150 are in contact in 3D (We x’rayed it):\nIf position 7 is changed from AminoAcidA to AminoAcid S, position 150 (in which it is too far to be written sequentially here) also changes to maintain interaction (Which is called: Co-Evolution!). This is the point of MSA and homologs in general, which is to find this interaction and conserved regions by arranging related protein sequences).\nCo-evolution vs general conservation and we have “General Conservation”, which is the simplest signal reflecting the structural importance of an AA position. Meaning that highly conserved sites are critical for:\nSo we’re basically saying here: “If two AA positions in a protein are close (in the final structure), they likely have co-evolved over millions of years.”\nWhat’s the correlation between co-evolution and contact in the 3D structure?! [TO DO] By Miguel Andrade at English Wikipedia - Transferred from en.wikipedia to Commons., CC BY-SA 3.0, https://commons.wikimedia.org/w/index.php?curid=3930704\nOrphan proteins These are proteins without homologs (No MSA depth, in other words, has no neighbors: similar to the Tetherin in vertebrates). Here, the sequence itself becomes the only input available for the NN, alongside the meaning that AF1 gets zero co-evolutionary information. There are other algorithms utilizing language models like RGN2 and ESMFOLD and trRosettaX-Single to predict structures. One may think of combining the two, or utilizing the other when there are no homologs available, the other may think of generating Synthetic MSAs (beneficial for Alphafold and its variants) like GhostFold and such. So anything out of MSAs is definitely out of AF1 (unless you’re seeing something that I cannot see).\nRemote or distant homologs There are certain proteins that look similar to certain others in their 3D structure, while oftentimes having also similar functions, all due to having descended from a common ancestor (being evolutionary related). But at the same time, they have a VERY LOW AminoAcid sequence-sequence similarity, maybe even undetectable because of the huge evolutionary time.\nSo despite the vast differences in their AA sequence, the structure AND function are the same as other sequences! There are tools that negate this type of homolog when searching for MSA’s, but certain others (like the “HHblits” and such that we’ll be applying in the Dataset and preparation ~80% section) are more sensitive and specifically designed to detect such homologs.\nThe use cases may be that if we had a new protein sequence without knowing their functions, we could search for a possible remote homolog to infer the functions.\nTherefore, we can conclude that we have two input features:\nThe AA sequences along with the MSA The Cα coordinates are only given throughout training as ground-truth data that we derive “The targets” from, not during inference.\nTargets (Loss functions) [Bad] Loss functions are the predicted value or representation and comparing it to the actual representation that it should have predicted (Ground-truth labels). In other words, the difference (minus sign here) between the predicted value and its actual value. The folding code (rules and interactions) are learned here. The loss function guides the massive number of weights to learn the correct patterns, meaning that the NN optimizes for structural accuracy: implicitly learning the folding code that is mentioned at the The Problem Statement.\nWe use the PDB ground truth labels (also called Target Outputs) to minimize the loss function and update the NN weights. Here, we use two matrices computed from the Cα coordinates to use as target values (ground truth). They’re pure mathematics:\nThe Target Outputs They’re split between two groups:\nPrimary target outputs: The final 3D structure\nNeural Network target outputs: The Torison angles as well as the\n1) Distance matrix (Primary target output): A more clear definition for clarity: They’re the “precise” coordinates of 3D positions (X - Y - Z) orthogonal coordinates, all measured in Ångströms (which are really small!) for every atom in a proteins entirety of a tertiary or quaternary structure, including the backbone and side-chain atoms. Other data includes: occupancy (likelihood of protein binding to a specific site), temperature factors, and element names. “Cα coordinates”, which stand for the alpha-carbon in the AA backbones! Their always in the backbone, which are different than the beta-carbons (Cβ) which are on the side chains. There is an important distinction to make here, though:\nAtomic coordinates (our data) every atom name in the molecule The primary structure, which is just a string of AminoAcids mentioned in the Implementation and Intuition. Hydrogen being a “sometimes” in the data is due to its weak signal and experimental limitations. They can be also too predictable, making it wiser\" to omit them (increasing computational efficiency) even though they are the crucial for protein folding and function.\nB) Auxiliary/Intermediate target outputs Angle Matrix (exception): It uses the backbone and side-chain dihedral angles. Basically the rotational degrees of freedom that define the SS (directly) of Alpha and beta sheets! They were learned and provided knowledge on how the backbone could physically bend and twist. Phi and Psi are also called Backbone Torsion Angles. These were computed on a separate NN Source: https://www.researchgate.net/figure/Dihedral-angles-in-glutamate-Dihedral-angles-are-the-main-degrees-of-freedom-for-the_fig4_44651362\nThe (Sec)ondary(Struct)ure (SS) profile, often derived from the AA sequence. SS is generated by running PSIPRED or similar on the sequence (likely computed from coordinates in AF1, though), then outputs a probability of each position being a H(helix: spiral)/E(strand)/C(coil: strand but unstructured form). SASA: The actual amount of surface area of each residue exposed to the surrounding solvent. This helped the model learn about hydrophobic core formation, along with loop regions. Inter-residue distances (Distograms): They are the distances between two residues (AAs). Here, we compare the distance between each AA and another in the SAME PROTEIN at the 3D space. They’re often categorized by bins as will be mentioned in the Engineering. You can say that we derive the XYZ features (target!), but the loss was on the feature space. Example illustration between five amino acids in the same protein:\nM S V T Q M 0 3.8 7.2 12.1 15.3 S 3.8 0 4.1 8.9 14.2 V 7.2 4.1 0 5.3 10.1 T 12.1 8.9 5.3 0 4.8 Q 15.3 14.2 10.1 4.8 0 So they’re distances between pairs of AminoAcids. You can see that the distance between AA “M” and itself is zero (similar to the distance between you and yourself), while other pairs facing the same pattern. There is also a pattern hinted by a diagonal line.\n“What can the NN conclude?!”\nClose residues (3-4 Å) then a match in helix shapes Variable distances then susceptible loops Far apart in sequence but close in space then a possible folding interaction You can optionally switch them to Binary Contact Maps when hit a range:\n1 = if distance is below 8Ang. 0 = Above 8Ang. Example Illustration of Binary Contact Maps:\nM S V T Q M 0 1 0 0 0 S 1 0 1 0 0 V 0 1 0 1 0 T 0 0 1 0 1 Q 0 0 0 1 0 So if we think about outputting the 3D structure itself, we hit a roadblock that our NN cannot distinguish from easily. [That was not yet clarified by myself!]\nThese auxiliary losses aid the NN to learn, but remember, we don’t specifically output them, nor do we specifically input them to the NN itself! Alphafold 1 explicitly had Torsion angles and Distograms as outputs. For the auxiliary losses, use these as additional training signal during training with a very marginal weight provided (not affecting the outputs as much as other loss functions like Distance Matrices and the Angle Matrices)\nThe intuition here is that even though some these data points were not explicitly defined in the PDB, they were nonetheless used as supplementary data to help the algorithm MODEL the data better.\nOutputs: Note: AlphaFold 1 produced several outputs that described the proteins conformation in a 2D, pairwise representation which are essentially structural features and local geometry information.\nStage one …are the two targets mentioned: an Angle matrix and a Distance map. Then OPTIONALLY, the SS are derived from those distance maps themselves using other algorithms like DSSP to assign H/E/C by analyzing angles of the distance maps (which is AFTER the prediction of the NN). If we wanted to know and predict the SS before the model outputs a 3D structure, we use the AA sequence and ingest it to a “PSIPRED” or a “S4PRED” to get a prediction. Whichever fits the speed/accuracy goal respectively.\nInsight: Subsampling and templates, varying random seeds to the MSA to output multiple proteins and conformations (black-box as salt alternative). If you needed uncertainty quantification//constraints beyond just distances (angle and excluded volumes) or maybe you have a noisy or incomplete distance map(s). Modifying the MSA itself seems core. There are potentials of having an NN here, too.\nStage two Then we take both outputs (Distance and Angle Matrices), by constructing the full 3D atomic coordinates using either options:\nPure Maths (MDS or similar tools) without learning. A blend of physics and mathematics: which is different from a traditional energy function, as it directly learns from data and principles from physics (Van der Waals forces, and all the other interactions covalent and non-covalent interactions taken into account as constraints), instead of using a less-sophisticated method like MDS. This ensured that the resulting structure was physically realistic, too, also is the approach used by AF1! For the physicists:\nThere are no pure quantum-level physics involved, as the energy function is semi-empirical (derived from known structures) using classical force fields and such. They’re learned patterns from real protein structures, with a blend of classical mechanics approximations.\nStage three (Optional) After the converging of the gradient descent on stage 2, using a classical physics simulation to slightly adjust the structure. Removing minor clashes and optimizing local geometry along with other many optimizations. The difference between this stage and the second stage is that this is more fine-grained polishing (very fine touches) while the former second stage is more coarse and a global optimization of the fold. At the third stage, we use the best structure outputted from the previous stage and apply cycles of energy minimization and repacking.\nAttraction and repulsion, size, and mutations: TO BE CLEANED UP AFTER [Building up the smallest to the biggest protein component For intuition and bigger picture] There are things called attraction forces coming from salt bridges, we need positive and negative charges together so the entire protein can be stable. So as long as we have that charge balance, everything can become stable.\nImagine for a second: Two proteins touching each other:\nMKTAYIAKQ(K)PGLV ... YKV(E)SFIKQ\nK: AA no. 10 which is positively charged\nE: AA no. 50 which is negatively charged\nSo if we had AA on position 10 of a protein K, we can safely get another AA with the same charge in it’s place, like ‘R’ , which are both positive (which is also called a conservative mutation).\nOr else, if that occurs where repulsion meets where there should be attraction (If it were an AA of A, which is neutral); The protein misfolds, aggregates and maybe loses its function (No, there is no zombie behaviour for Halloween in such cases!)…\nDisease prediction: [personalized medicne]\nThere are three disease mechanisms (Roughly):\nLoss-of-function Gain-of-Function Dominant-Negative The percentages are subjectively approximated, but conveys the meaning nonetheless\nThere are possibilities when proteins do not fold as intended, either due to size mismatches or wrong charges; Maybe due to the energy landscape changing as a result of a different environment or maybe due to a protein that cannot escape a kinetic trap, as in being in wrong conditions and no chaperones or maybe proteasomes which are quality control (cell level).\nThe percentage of diseases coming from Gain-of-Function (GOF), when the protein works too well or does something new and bad) are approximately (24%) of all diseases, while Loss-of-function (LOF), when the protein breaks, are accountable for up to 52% of diseases.\nKeep in mind that (AR) mutations occur at the protein interiors (58%), while only (15%) are in the protein’s surface. These are also at the LOF mutations.\nSome of which can trigger certain diseases where mutant proteins sometimes gain zombie-like behaviour called Dominant-Negative (DN) (That’s the Halloween spirit!) and unfortunately, most of these mutations are that of serious diseases; some are: cancers and seizures (GOF). Others are: the Prion disease, some Huntington’s diseases // Hemophilia // Cystic fibrosis (LOF) and other such protein-based issues like (DN) whereas it is a contagious mutation causing HMT, Myocilin and some collagen diseases.\nSo that we got this out of the way, maybe we start thinking using these as an anchor point. Say, a “ΔΔG” to measure a folded protein’s stability (i.e: How easily it unfolds and cause trouble) basically a measure of destabilization and such after the protein has folded. Any unstable protein has the potential to unfold, and getts degrades, may also be potential for a LOF mutation.\nNow this ΔΔG is also called the change in free energy between two states:\nΔΔG = ΔG(mutant) NOT normal - ΔG(wild-type) NORMAL\nMeaning that ΔΔG (folding) is for stability! But a crucial point to make here is that ΔΔG can be also a binding (interaction). The former (stability) is done after the protein has folded and measures how stable it is, Example:\nInterpretation:\nΔΔG \u003e +1.0 kcal/mol: Mutation destabilizes → protein misfolds or unfolds more easily ΔΔG \u003c -1.0 kcal/mol: Mutation stabilizes → protein is harder to unfold (often GOF signal) The latter ΔΔG (binding) is done also after the protein folding process, but when interacting with something else. So it answers: “Does this mutation weaken or strengthen the protein-protein interaction?”. Example:\nInterpretation:\nΔΔG \u003e +1.0 kcal/mol: Mutation weakens interaction → potential GOF or LOF depending on context ΔΔG \u003c -1.0 kcal/mol: Mutation strengthens interaction → GOF signal (binds too well to wrong partner) Important misconception: When calculating both ΔΔG’s, we’re always working with the folded structure (unless your creativity says otherwise). But we’re predicting how stable is the final folded state. (Remember? Proteins don’t fold once and that’s it!)\nNow, how much would it take for a mutant to stay in the native state? Or in other words, how much MORE destabilized is the mutant? So the higher the ΔΔG, the more easy it unfolds, the lower it is, the more it resists unfolding (which open up possibilities of GOF).\nSo, to sum it up, ΔΔG (folding) doesn’t predict “folding.” It predicts “unfolding.”\nArchitecture wise, there are some already on the shelf computing ΔΔG!\nFoldX and Rosetta, and maybe a latest RaSP An output may look similar to this (A layered production pipeline, just for demonstration!):\nSTRUCTURAL ANALYSIS: - ΔΔG Folding Stability: +2.3 kcal/mol (DESTABILIZING) - Position Location: Buried interior (80% burial) - Distance to interface: 12.4 Å (isolated) RECOMMENDATION: - Likely pathogenic (LOF mechanism) - Experimental validation: Thermal stability assay - Cellular: Check protein expression levels Anyways, being aware of the limitations of our current architectures and available tools is crucial, as we need several factors that are deeper than intuition-level:\naggregation propensity (Forming plaques similar to certain diseases), cellular trafficking (Stuck in ER. Used as a DN signal), dynamic properties (Flexibility changing and such), binding kinetics (How fast does it unbind) cofactor dependence (Metal coordination and its loss) So they don’t explain which forces are broken and such other things. We can take a scenario where it fails to forecast a mutation type:\nScenario: Mutation has ΔΔG = +1.5 kcal/mol (destabilizing) FoldX says: \"This is destabilizing, probably LOF\" But actually: - IF it breaks a salt bridge in interior then LOF! - IF it breaks hydrophobic core indicates aggregation (Alzheimer's-like) and more... Same ΔΔG, different diseases! Maybe we need a layering advice: Energy calculations, interface analysis, mechanism-specific logic all on top of the structure that we get from PDB or our model… all increasing complexity but that’s a potential right there to optimize and hopefully find a better approach. This part feels a bit underdeveloped, though. My condolences\nWe delved too much on insights and other introductory parts, but the intuition shall be enough to continue with the implementation of the algorithm itself. This requires basic familiarity, but nothing will pass unquestioned that I myself have even questioned. We’ll zoom in, zoom out, keep seeing both pictures and identify the optimal practices for both Python and Machine learning.\nEngineering Dataset and preparation ~80% Note on MSA databases: UniProt is a comprehensive protein sequence and annotation DB, containing millions of them. All the other databases point to it! But if we use UniRef, we can reference clusters at which the sequences are either 100%//or 90% or 50% the same in identity of the target sequence. The purpose as to reduce the database size probably to find more Remote or distant homologs as we get less-similar sequences. Uniclust, however, goes deeper than 50% match.\nIn AF1 case, we are still unsure what and which database they used. Which is why were going to stick with the most likely clustered versions (Uniref90 or 50 at that time). Although for AF2, it was confirmed that they used Uniclust 30 along with the Uniref90 and implicitly Uniref50 using BFD databases.\nAnother note, specifically for HHblits and Jackhmmr: There are speculations that they may have used HHblits and HMMER tools (not explicitly defined) simultaneously, but it is confirmed to have been utilized that way in AF2, not AF1.\nInputs: AA sequences\nMSA: Using external databases, we search for MSA’s using the Uniclust30 and BDF (using HHblits) /Uniref90 and MGnify databases (using JackHMMR). We also use along with PSI-blast to summarize the signal (probability of each AA at each single position). MSA : Generated!\nNow, feeding the raw MSA directly to the NN (AF2 used the “Evoformer” module here, more about it later). Now that it learns the patterns and recognizing the subtle, complex co-variations (MSA purpose) that correlate with physical contact in a 3D structure.\nA Potts model was the traditional way of calculating the co-evolutionary signals. It used the traditional methodology of pseudolikelihood maximization to calculate evolutionary signals (inferring direct AA contacts from raw MSAs). Now, the NN does just that without it.\nThis, as an input, can be a bottleneck in runtime and we should have error handling incase there are no homologs present. The lower quality MSA we have the lesser accurate the model may be. Although some algorithms have completely removed this component with slightly diminished accuracy\nTargets: Distance maps: A distance distribution of 64 bins. Angles: Psi and Phi Torsion angles Auxiliary loss: Output Stage one: Distance maps and angle torsions\nStage two: Using guided minimization, which is an algorithm (specifically a version of gradient descent: L-BFGS algorithm), that used this potential surface as guidance to fold the protein and find the lowest “energy”, outputting a 3D structure. In other words, this stage optimizes the backbone Cα positions (X - Y - Z) to satisfy the distance predictions when training. Three processes occur here:\nMultiple starting points, implying that the algorithm was run multiple times with different 3D configurations of the protein (all random). This explores a wide range of possible folds (related to the previous insight?!) then it performs an Iterative minimization, adjusting the AA positions to get the most steeply decreased potential function (basically epochs for you ML engineers), and finally We choose the best candidates after converging. They are the lowest-energy structure from multiple starting runs implied on the first step of this algorithm. Stage three: Optional refinement using Rosetta REF15 energy function.\nNN architecture ~20% We first create a Class that inherits the nn.module (so we can do all of its powers like .train() and .eval(), and many others mentioned in the documentation here\nFitting to The Problem Statement We already clarified the reason for approaching the problem using distance maps between AA’s and another, plus clarified the issues if we were to approach the problem like predicting the entire protein [P1] in a 3D representation right away from the output [P2].\nIn protein distance prediction, we do distance bins classification (grouping predictions and settling for “Good Enough” instead of regression. So, we predict the not the exact distances, but an approximation of them:\n0.1A 0.2A 0.3A bins and so on till 8A; because contacts matter in proteins\nThen after they get far enough, the bins become more coarse 8A, 9A etc till we reach the 20 angstorm threshold for a “functionality irrelevant” state between AA’s.\nSo not only are we predicting distances that are “close enough \"\n(Bins), we also do not produce a 3D output predicting the exact protein shape, but were outputting a distance map between each two AA’s.\nEmbeddings We then create an embedding layer, which basically serves as our “means” [*demonstration] ,\nSo we give the embedding space an index (AA) We give it the index we DO NOT want to update (like padding idx which is index(20) in our VOCAB). If we remove this part, we’d be training the padding tokens and the model would think there are patterns in such cases: But here’s the catch: Maybe one lesser protein still has potential in making useful pattern, in such case we’d basically be adding a “feature”, not a “bug” in our training. For example: adding soft masking with learned embedding; we provide the padding with a learnable identity (i.e not shouting “ignore me!!”, but represents a “no amino acid” index).\nBack at the embedding space, we had created ONE embedding for EACH AA. One way to ensure the model has enough “learning capacity” is by introducing more embedding dimensions. So we create a 64 dimensional embedding space for EACH amino acid.\nSo if we had 2 proteins, max length (between them) is 8 AA’s:\n[[0, 1, 2, 3, 4, 20, 20, 20], #Take note of the first zero on protein 1 [0, 1, 2, 3, 4, 5, 6, 7]] # batch_size = 2 # seq_len = 8 # Their shape is (2 , 8) Then the forward pass of the embedding layer:\nembedding.weight[0, :] = [0.23, -0.45, ..., 0.67] # 64 numbers for amino acid A, which is the zero index protein one. # Shape has become (2, 8, 64) Masks Now, we apply the masks to identify which lookup tables (embeddings) should be trained. In this notebook, we go with hard masking as mentioned before. But to those curious to apply soft masking (learnable identity), it’d go somewhere along the following lines:\nself.pad_embedding = nn.Parameter(torch.zeros(embed_dim)) # embeddings = torch.where( # masks.unsqueeze(-1).bool(), # embeddings, # self.pad_embedding Hard masking, however, is applied by multiplying (zeroing) the padding tokens by zero and all the other values multiplied by zero, which are actual AA’s, so the model ignores these values because their weights are zero.\nPairwise We need to create pairwise (the relationship between AA0 AA1) relationships…. since we’re comparing two AAs locations using “euclidean distance” (Pythagoras but 3D instead of 2D) as mentioned before, and each embedding is 64 dimemions.\nMaybe this will stick:\nIn 1D sequence: [AA0, AA1, AA2], AA0 and AA2 are only two positions farther away from each other 0 - 2 = 2 positions.\nBUT, in 3D space (our life but minus the “time” dimension), maybe they’re neighbors. We avoided outputting 3D maps directly because of the confusion in the neural network [ * need more possibilities], so we proposed the pairwise idea of 2D dimensions.\nIt goes by first adding dimensions to our first “General embedding”: emb_i by using . unsqueeze(zeroindexed) to add rows for each AA.\nFirst, let’s see a sample data:\n1 protein, 3 amino acids, 2-dim embeddings (for visualization) batch_size = 1 seq_len = 3 # Our AA's embed_dim = 2 # \"General embedding\" embeddings = tensor([ [[0.1, 0.2], # AA0 embedding [0.3, 0.4], # AA1 embedding [0.5, 0.6]] # AA2 embedding ]) # Shape: (1, 3, 2) emb_i = embeddings.unsqueeze(2) emb_i = [[[0.1, 0.2]([[0.1, 0.2), # AA0 [0.3, 0.4](0.3, 0.4), # AA1 [0.5, 0.6](0.5, 0.6)]] # AA2, and yes, they only have one bracket extra. # Original: [AA0, AA1, AA2] # (1, 3, 2) # After: [[AA0], [AA1], [AA2]] Each AA in its own \"row\" #(1, 3, 1, 2) Then, with another embedding, calling it emb_j.\nWhy two embeddings? To achieve pairwise relationships. Yes, this is how we do it.\nSo, the PAIRWISE embeddings should exist by adding an embedding of an AA with with another called concat'ing\nIn other words, If we had a 64 dimensional embedding for each AA, it’d be a 128 dimensional PAIRWISE embedding.\nSo we gt emb_j, our other pair to be concatted with the other embedding emb_i using our “General embedding”.\nTo get emb_j, we add another dimension so all AA’s can be together rather than each to be in one row\n# Our \"General embedding\" embeddings = [[[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]] # Original: [AA0, AA1, AA2] # Shape: (1, 3, 2) emb_j = embeddings.unsqueeze(1) # Here it is emb_j = [[[[0.1, 0.2], # All AAs in one \"row\" now [0.3, 0.4], [0.5, 0.6]]]] # After: [AA0, AA1, AA2](AA0, AA1, AA2) All AAs together # Shape: (1, 1, 3, 2) Added dimension at position 1 Then we .expand and enter a Python confusion point out of the range of the intuition required to understand AlphaFold 1.\nemb_i = emb_i.expand(-1, -1, seq_len, -1)\nWe repeat the last column three times (our seq_length which is AA count);\nemb_i = [[[[0.1, 0.2], # Focus on this [0.3, 0.4], [0.5, 0.6]]]] We repeat 0.1, 0.2 by duplicating them to other columns to the right:\n[[0.1, 0.2], [0.1, 0.2], [0.1, 0.2]], # Row 0: AA0 The same for the other AA’s:\n[[0.3, 0.4], [0.3, 0.4], [0.3, 0.4]], # Row 1: AA1 repeated 3 times [[0.5, 0.6], [0.5, 0.6], [0.5, 0.6]] # Row 2: AA2 repeated 3 times Which end up looking like:\nCol0 Col1 Col2 Row0: [AA0] [AA0] [AA0] Row1: [AA1] [AA1] [AA1] Row2: [AA2] [AA2] [AA2] Now emb_j:\nemb_j = emb_j.expand(-1, seq_len, -1, -1)\nWhich is done by repeating the rows, not the columns\nVisual interpretation:\n# Col0 Col1 Col2 # Row0: [AA0] [AA1] [AA2] # Row1: [AA0] [AA1] [AA2] # Row2: [AA0] [AA1] [AA2] What does each cell contain?\n# Position (row=0, col=0): emb_i[0, 0, 0, :] = [0.1, 0.2] # AA0 emb_j[0, 0, 0, :] = [0.1, 0.2] # AA0 # So, (AA0, AA0) pairs... # Position (row=0, col=1): emb_i[0, 0, 1, :] = [0.1, 0.2] # AA0 emb_j[0, 0, 1, :] = [0.3, 0.4] # AA1 # So, (AA0, AA1) pairs... etc # Position (row=0, col=2): emb_i[0, 0, 2, :] = [0.1, 0.2] # AA0 emb_j[0, 0, 2, :] = [0.5, 0.6] # AA2 # So, (AA0, AA2) # Position (row=1, col=0): emb_i[0, 1, 0, :] = [0.3, 0.4] # AA1 emb_j[0, 1, 0, :] = [0.1, 0.2] # AA0 So, (AA1, AA0) Let’s concat both embeddings emb_i with emb_j each cell contains 4 dimensional vectors (2 for each AA)\nNow, one may propose that we have used a different concat technique, touching on feature engineering, which is called asymmetric (where it captures direction) and symmetric order (doesn’t matter) decomposition:\nSymmetric + Antisymmetric decomposition\nsym = emb_i + emb_j # Symmetric antisym = emb_i - emb_j # Antisymmetric Then concat them: pair_features = torch.cat([sym, antisym, emb_i * emb_j], dim=-1) Or maybe leverage the “sequence separation” technique, in which I have no expertise on.\nNow we use convolutional layers. These are “kernels” that perform computation based on[ * ] and slide [ * ]. Note that we need reshaping to BCHW.\nThis is a WEIGHTED SUM of all input channels\nEach output channel learns different “combinations” of input features. Then we add non-linearities, in our case is a RELU activation function. This gives us depth which the problem statement deserves (Unless:\nThere are scaling techniques incorporated (more layers compensating for the lack of depth, etc…) There will be a more simple algorithm (preferably comparable performance to that of the bigger AF1/2 we have now) in the future other, but that’s for another topic Now, this is my favorite second-trick:\nRemember that we had pairwise relationships? That indirectly holds us capable of sliding a window across these pairs! They truly look like boxes that can be slid over once you think about that..\nbut apparently the purpose of CONV2D was diminished after we did kernel = 1, which makes us unable to render neighbors and see the relationships of pairs.\nThen we add residual blocks, so the gradient can flow backwards in larger architectures.\nAlso to have padding ON for convnets, because having same shapes is a necessary design choice (but not strictly) for the residual connection to work.\nAfter passing through the network’s head, it outputs 37 logits as bin ranges output that we later convert with softmax\nThen we initialize specific parts of the network as demonstrated here, by simply looping on the list of modules that we have (Architecture components like CONV/). This aids in deep NN architecture or if we needed to scale.\nInference and recap (To be refined) Given a novel, non-seen-before protein sequence: MSVTQRFIAKQ(1)\nWe generate a MSA (2) using an external DB (HHblits), then generate a PSI-blast profile. Then, after the output of the distance map from the NN, using the distance map, Then use MDS or similar tool to construct a 3D, folded protein. We optionally can compute the Angle Matrices using DSSP analysis to label H/E/C on the SS per AA.\nTherefore, we ingest (1), (2) and (3) to the model, with it predicting without “improving” thus not using Cα coordinates (unless we specifically add TrainingTestTime functionality), because we’re inferencing after all. No gradients, weight updates, activations.\nNote that AF1 is far away from being an E2E architecture, because of the external MSA generation and requiring GradientDecsent (GD) optimization rather than directly predicting coordinates.\n[Continue]\nTo be added: Doodles on the images themselves (studying purposes obviously) Instances of outer scope interdisciplinary knowledge are to be integrated when needed (should serve as fun “tips” for your physical and mental life as well) All the “continue”’s either visibile or not Linking factual information and separating it from speculative theory Including the original paper in attempt of paper replication, not truly word-for-word but close enough Align the topics to their respective headings. Some are scattered! Many other images for demonstration and illustration. Maybe a self-made GIF to clear up both the bigger and smaller pictures. Heavy intermediate factors may be distracting! Foldit competition and more relevant documentation are WIP along with RL enhancement Important links:\nCitation:\nJohn Jumper, et al. (2018). AlphaFold: A Protein Structure Prediction System. The abstract book of the 13th Critical Assessment of Techniques for Protein Structure Prediction (CASP13).\nVaradi, M. et al. “AlphaFold Protein Structure Database in 2024: Providing structure coverage for over 214 million protein sequences.” Nucleic Acids Research gkad1011 (2023). DOI: 10.1093/nar/gkad1011.\nZhang G, Liu C, Lu J, Zhang S, Zhu L. The Role of AI-Driven De Novo Protein Design in the Exploration of the Protein Functional Universe. Biology (Basel). 2025 Sep 15;14(9):1268. doi: 10.3390/biology14091268. PMID: 41007412; PMCID: PMC12467925.\nSenior, A.W., Evans, R., Jumper, J. et al. “Improved protein structure prediction using potentials from deep learning.” Nature 577, 706–710 (2020).\nJumper, J. et al. “Highly accurate protein structure prediction with AlphaFold.” Nature 596, 583–589 (2021). DOI: 10.1038/s41586-021-03819-2\nAbramson, J., Adler, J., Dunger, J. et al. Accurate structure prediction of biomolecular interactions with AlphaFold 3. Nature 630, 493–500 (2024).\nInteresting for later:\nhttp://fhalab.caltech.edu/?page_id=171#page-content\nOthers:\nhttps://discovery.ucl.ac.uk/10142031/1/NatMethOpinionRevised-Final.pdf\nhttps://pmc.ncbi.nlm.nih.gov/articles/PMC11348012/\nhttps://medium.com/@satishlokhande5674/what-information-does-alphafold-use-from-the-protein-data-bank-44048e672100\nhttps://github.com/google-deepmind/deepmind-research/tree/master\nhttps://pmc.ncbi.nlm.nih.gov/articles/PMC11319189/\nhttps://pmc.ncbi.nlm.nih.gov/articles/PMC9710616/\nhttps://www.youtube.com/watch?v=NN_uRCH7mrQ\nhttps://pmc.ncbi.nlm.nih.gov/articles/PMC5588872/\nhttps://lmu.pressbooks.pub/conceptsinbiology/chapter/protein-structure/\nhttps://pmc.ncbi.nlm.nih.gov/articles/PMC5588872/\n",
+  "wordCount" : "11268",
+  "inLanguage": "en",
+  "image":"http://localhost:1313/papers/paper4/paper4.png","datePublished": "2025-10-29T00:00:00Z",
+  "dateModified": "2025-10-29T00:00:00Z",
+  "author":[{
+    "@type": "Person",
+    "name": "Jebrai J."
+  }],
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "http://localhost:1313/papers/paper4/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "jebrai",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "http://localhost:1313/favicon.ico"
+    }
+  }
+}
+</script>
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558AjM3Yz3BBFQUbk/zgIYC2R0QpeeYb+TwlBVMrlgLqwRjRtGZiK7ww" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" integrity="sha384-hIoBPJpTUs74ddyc4bFZSM1TVlQDA60VBbJS0oA934VSz82sBx1X7kSx2ATBDIyd" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" integrity="sha384-43gviWU0YVjaDtb/GhzOouOXtZMP/7XUzwPTstBeZFe/+rCMvRwr4yROQP43s0Xk" crossorigin="anonymous"
+  onload="renderMathInElement(document.body);"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false},
+            {left: "\\begin{equation}", right: "\\end{equation}", display: true},
+            {left: "\\begin{equation*}", right: "\\end{equation*}", display: true},
+            {left: "\\begin{align}", right: "\\end{align}", display: true},
+            {left: "\\begin{align*}", right: "\\end{align*}", display: true},
+            {left: "\\begin{alignat}", right: "\\end{alignat}", display: true},
+            {left: "\\begin{gather}", right: "\\end{gather}", display: true},
+            {left: "\\begin{CD}", right: "\\end{CD}", display: true},
+          ],
+          throwOnError : false
+        });
+    });
+</script>
+ 
+
+
+</head>
+
+<body class="" id="top">
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="http://localhost:1313/" accesskey="h" title="Jebrai (Alt + H)">
+                <img src="http://localhost:1313/favicon.ico" alt="" aria-label="logo"
+                    height="18">Jebrai</a>
+            <div class="logo-switches">
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="http://localhost:1313/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/papers/" title="Applications &amp; other">
+                    <span>Applications &amp; other</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/books/" title="Books">
+                    <span>Books</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+
+    <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      AlphaFold: Architecture, Intuition and Implementation
+    </h1>
+    <div class="post-meta"><span title='2025-10-29 00:00:00 +0000 UTC'>October 2025</span>&nbsp;&middot;&nbsp;Jebrai J.
+
+</div>
+  </header> 
+  <div class="post-content"><div id="stamp-post1" class="autodidactus-stamp">
+    S-RES:2601.v1 | AUTODIDACTUS
+</div>
+
+<h1 id="scope">Scope</h1>
+<p>This document should serve anyone with curiosity, as we&rsquo;ll cover:</p>
+<ul>
+<li>Basic protein knowledge (no promises),</li>
+<li>The field of proteins as a whole, as well as providing potential data ingestion in case you&rsquo;ll be delving further in that field,</li>
+<li>Problem statements along with their solutions, by fitting the (refined) data to a (relatively custom) model,</li>
+<li>Core concepts of the architecture,</li>
+<li>And lastly what could be used to extend the idea itself of AlphaFold 1, as well as questions that have incurred to me personally while attempting to understand the architecture motivation and the interconnected nature of everything. These are thrown throughout the document as &ldquo;insights&rdquo; and in a (relatively) simple methodology of demonstration. However, it is favorable for the reader to absorb it however they like.</li>
+</ul>
+<p>Everything is wrapped with a &ldquo;before in each component pass forward&rdquo; and its after to enhance the <a href="#engineering">Engineering</a> aspect. There is a that serves a bigger picture on what we&rsquo;ll be dealing with for later stages, as well as solidify our understanding towards each components role.</p>
+<h3 id="extension">Extension</h3>
+<p>While there will be a thorough study towards AlphaFold 2 and other architectures, the notes will be left here as possibilities for extension for oneself to exercise the muscle of &ldquo;How can we improve this?&rdquo;, prompting that the reader has the ability to delve and realize they&rsquo;re passing an important, guaranteed (something that is built upon, AF2 and AF3 for example. There are also other possibilities) questions that are answered in later architectures.</p>
+<p>The reason (we) chose AlphaFold 1 (with extension potential mentioned in <a href="#foreword">Foreword</a>) and not its modern variants (AlphaFold 2&rsquo;s breakthrough) is due to the foundational approach towards the problem at hand.</p>
+<blockquote>
+<p><em>You&rsquo;d notice that a prototype architecture would contain several distinct modules, similar to the idea of &ldquo;making it happen and perfect it later&rdquo;.</em></p>
+</blockquote>
+<p>In all intentions here lie on gaining intuition that will matter later on either on the same exact task and the elaborative extensions, or the in different disciplines (the science of adaptability). Hopefully that will serve as your &ldquo;purpose&rdquo; in reading the document at hand.</p>
+<p><strong>Considerations:</strong></p>
+<ul>
+<li>This may be published before polished, maybe even before folding completely, meaning that some text are also thoughts immediately jotted down, which will be separated from practicality with each revision.</li>
+<li><em><strong>Some images are clickable and have links in them</strong></em>. Be careful clicking any links before the final revision is out (HTTP etc.).</li>
+<li>Some sources are also linked partially or fully, even though they&rsquo;re not the entire source in many of the text linking it.</li>
+<li>The document may be separated due to how large it is currently, but there will be attempts in making them fit to keep it holistic and central.</li>
+</ul>
+<p><em>Any feedback of any form is welcome.</em></p>
+<h2 id="brevity">Brevity</h2>
+<p>To avoid repeating &ldquo;AlphaFold X by DeepMind&rdquo;; AFX is the norm,<br>
+AminoAcid abbreviation of &ldquo;AA&rdquo; which is used synonymously with &ldquo;residue&rdquo; or &ldquo;res&rdquo;,<br>
+along with the abbreviation of Angstroms &ldquo;Å&rdquo;: &ldquo;Ang.&rdquo;<br>
+Reinforcement Learning: &ldquo;RL&rdquo;<br>
+<a href="https://www.rcsb.org/#Category-deposit" target="_blank" rel="noopener noreferrer">ProtienDataBank</a>: &ldquo;PDB&rdquo;<br>
+&hellip;.<br>
+Other abbreviations are made on-spot.<br>
+There are also cases for alternating between them for clarity and intuition.</p>
+<h2 id="foreword">Foreword</h2>
+<p>There are many architectures that have been placed in the record for the &ldquo;protein folding&rdquo; problem:</p>
+<ul>
+<li>AlphaFold 1, which is our main topic; What AF1 (AlphaFold 1) basically did:<br>
+&lsquo;Alphafold uses advanced biotechnology and AI to help determine <em><strong>longer</strong></em> protein structures over a <em><strong>shorter</strong></em> period)&rsquo;. This is the simplest algorithm (least devouring of data as well as the complexity threshold), but is the most non end-to-end &ldquo;solution&rdquo; (several components and &ldquo;externalities&rdquo;), which also lays groundwork and first-hand intuition on the problem statement.</li>
+<li>AlphaFold 2 and its extensions: 2.3, and multimer which emphasizes a minor role in protein-protein interactions (some improved IDRs capturing capability), but it did well in the static protein-protein complexes (see <a href="https://www.ebi.ac.uk/training/online/courses/alphafold/" target="_blank" rel="noopener noreferrer">AlphaFold | EMBL-EBI Training</a> as well as <a href="https://elearning.vib.be/courses/alphafold/lessons/the-alphafold-pipeline/topic/overview-of-the-architecture/%29" target="_blank" rel="noopener noreferrer">https://elearning.vib.be/courses/alphafold/lessons/the-alphafold-pipeline/topic/overview-of-the-architecture/)</a>.</li>
+<li>AlphaFold 3, which is abit out of the current scope: Prediction of interactions not just of proteins, but also DNA, RNA, small molecules (ligands), ions and chemical modifications.</li>
+</ul>
+<h3 id="purpose">Purpose</h3>
+<p>Understanding why proteins fold is important towards understanding <a href="#the-problem-statement">the problem statement</a>, along with the motive of this entire interaction between the five fields (Biochemistry in the interactions, Bioinformatics and genetics relating to MSAs, Artificial intelligence (attention, Evo-former, diffusion, etc), Structural Biology as in the decades-old dataset of <a href="#pdb">PDB</a> and experimental methods. And finally; Medicine and Biotechnology, <strong>which are currently the primary beneficiaries</strong> (think of it as the biggest &ldquo;To-dos&rdquo; after a breakthrough), using the insights derived from the other fields to:</p>
+<ol>
+<li>Accelerate drug discovery. Drugs typically work by binding to specific protein targets in the body (a receptor on a cell, or an enzyme in a pathogen, or ). So if we know the precise 3D structure of a target protein, we can design small-molecule drugs that fit perfectly into its active site see <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6829626/" target="_blank" rel="noopener noreferrer">this</a>and <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7121836/" target="_blank" rel="noopener noreferrer">that!</a></li>
+<li>Understand and treat diseases along with predicting disease-causing mutations, as misfolded proteins are associated with a range of severe conditions (particularly neurodegenerative like Alzheimer&rsquo;s, Parkinson&rsquo;s and Huntington&rsquo;s) as well as some cancers. So by understanding how they misfold, we can design therapies to stabilize them or maybe enhance the cells natural quality control systems, or maybe even prevent the formation of the toxic aggregates that starts them all. Along with others mentioned in the <a href="#disease-prediction">Disease prediction</a> section.</li>
+<li>Synthesize more proteins. Maybe designing industrial enzymes that can break down plastic waste, creating more resilient crops, and many other.</li>
+</ol>
+<p><strong>Summary:</strong><br>
+In AF1, we deal with a single protein, predicting how it will fold. Then, as the extension occur, we deal with complexes in AF2&rsquo;s multimer (along with single proteins in AF2 ver. 2.2). Lastly, we expand our capabilities of the two mentioned structures, all to view the wide range of biomolecules and predict their structures also. Any relatively interesting detail will be added along the way.</p>
+<h3 id="the-problem-statement">The Problem Statement</h3>
+<p>The &ldquo;protein folding problem&rdquo; is actually three parts:</p>
+<ul>
+<li>The folding code (Thermodynamic questioning, basically the explicit rules of  folding), they&rsquo;re the interactions that will be mentioned in the <a href="#building-up-from-the-smallest-to-the-biggest-protein-component">bigger picture</a></li>
+<li>Protein structure prediction. The static, single structures <a href="#alphafold-protein-structure-database-afdb">has been already determined</a>) (What we&rsquo;re doing in the <a href="#engineering">Engineering</a> section). This provided the blueprint by having a static map of nearly all known proteins.</li>
+<li>Understanding the actual <strong>physical process and mechanism</strong> by which a protein folds in nature, including the kinetics and intermediate states. Meaning that we understand &ldquo;why&rdquo; proteins fold the way they do, so efficiently and without random searches. This question is totally out of scope of this document.</li>
+</ul>
+<p>AlphaFold generally goes with (2) without having explicit inputs of the folding code (1) nor attempt to explain the models outputs (3). There are, however, some current case(s) of utilizing the explicit inputs of the folding code (used here in AlphaFold 1) indicated at <a href="#outputs">Outputs</a>, as well as later in AlphaFold 3s input. Regarding (3), this can possibly be examined in the model weights, but it is currently a black-box when relating it to AlphaFolds (complex architectures that weights aren&rsquo;t as easy to examine), that is, if we attempt to understand the algorithms output (probably a first-approach is finding a heat-map of activations just like how we did in CNNs and attention as indicated in the image below, but it is more complex the deeper the architecture is). We can also possibly build an XAI (Interpretable AI that its internal logic is understandable) to explain the currently <strong>epistemically opaque</strong> weights of the complex architectures. Either ways, it is definitely out of scope and may be included in future extensions.</p>
+<img src="Pasted%20image%2020251119130139.png" alt="Pasted image 20251119130139.png" /><p>Source: <a href="https://johfischer.com/2022/01/27/class-activation-maps/" target="_blank" rel="noopener noreferrer">https://johfischer.com/2022/01/27/class-activation-maps/</a> Linear combination of the weights and feature maps to obtain the class activation map</p>
+<p><strong>In other words;</strong><br>
+&ldquo;AlphaFold&rdquo; in general predicts the final structure, <em><strong>but it does not fully explain the dynamic process of how it gets there in a biological system, nor does it address the <a href="#formalisms-and-evaluation">other protein formalisms fully</a>, which are mentioned below.</strong></em> There are also an important conclusion: we may need <a href="https://en.wikipedia.org/wiki/Protein_folding" target="_blank" rel="noopener noreferrer">only the AminoAcid sequences as a &ldquo;manual&rdquo; in the folding process,</a> (more on that <a href="#building-up-from-the-smallest-to-the-biggest-protein-component">here</a>) Which comes from the mass-feeding of the data to the target model (in which it earns the intuition and pattern-recognition from thousands of samples). This proved to work (in the case of OpenAIs GPT-3 and many other LLMS) when scaling complexity and data, till <a href="https://artificialcorner.com/p/gpt-5-may-be-proof-that-scaling-alone" target="_blank" rel="noopener noreferrer">reaching a certain plateau</a> that requires a redirection to innovating newer architectures or maybe re-framing the current use of what we have. More on that at the <a href="#alphafold-protein-structure-database-afdb">AlphaFold Protein Structure Database (AFDB)</a>).</p>
+<h3 id="cancer">Cancer</h3>
+<h3 id="stem-cells">Stem cells</h3>
+<p>&ldquo;The cell sizes of whales aren&rsquo;t bigger than a mouse&rsquo;s, it&rsquo;s just that the whales have more cells&rdquo;</p>
+<p><em>Small insight:</em></p>
+<p>The use of crystallography and OTHER techniques in identifying protein structure. They&rsquo;re an accurate way of figuring out the structure of proteins, but have you ever thought of other techniques, like Nuclear Magnetic Resonance (NMR), spectroscopy, Cryo-EM)? Well, if you go even deeper in that branch, you&rsquo;d also realize the potential of Machine Learning application towards traditional techniques like crystallography and these other techniques. In the <a href="#formalisms-and-evaluation">formalisms</a> section, there is a &ldquo;realization&rdquo; of using some of these experimental techniques in solving the current frontiers of problems revolving around the protein.</p>
+<p>Continuing, the point that is trying to get across is that there can be a Machine Learning algorithm as an &ldquo;Aid&rsquo;er&rdquo; or more professionally, a &ldquo;Helper algorithm&rdquo; in these techniques themselves. Meaning that besides a ML framework taking the core idea and digest (AF1), we&rsquo;d have it as a secondary component that aids in the function of the core algorithm (or experiment if we&rsquo;re specific).</p>
+<p>It also takes some form of delusion, too (mind you). As this is useful as a possibility opener if one is truly passionate about proteins and can open DOORS one couldn&rsquo;t have IMAGINED!! (yes, yes, bla bla) as long as it doesn&rsquo;t distract one from pursuing a single technique to their subjective creative limits, or however your working philosophy may apply.</p>
+<h3 id="formalisms-and-evaluation">Formalisms and evaluation</h3>
+<p><em>Some highlights in bold are of relative significance</em></p>
+<p>So, we conclude that:</p>
+<ol>
+<li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11623436/" target="_blank" rel="noopener noreferrer">Proteins are dynamic, not static</a>: they&rsquo;re constantly moving, twisting, changing shape in a biological environment. So when they perform their functions, say, binding with other molecules for example, any &ldquo;Alphafold&rdquo; predicts one molecular photo similar to a static shot of a protein folded, but since proteins are dynamic and aren&rsquo;t yet captured by any &ldquo;AlphaFold&rdquo; model in particular, mentioning some more of the dynamics:
+<ul>
+<li>Transition states: The specific intermediate shapes it temporality adopts moving between stable states (example being its interpolation between &ldquo;open&rdquo; and &ldquo;closed&rdquo; form).</li>
+<li><strong>IDRs</strong>: Some parts of proteins are naturally and inherently unstructured and  flexible till they bind with their partners. This is actually crucial to interact with a wide range of client proteins.</li>
+<li>Real-time atomic fluctuations: Constant and rapid vibrations of chemical  bonds and residues.</li>
+</ul>
+</li>
+</ol>
+<p>Some experimental techniques (the one finding the structure of the protein itself) which are NMR and spectroscopy and FRET, along with molecular dynamics simulations do DESCRIBE the conformational changes and the continuous flexibility and movement of the proteins in their natural environments. All of which would be key in figuring out not just one possible conformation, but all of their potential conformations per protein (one protein or a single &ldquo;polymer&rdquo;) or complex (multiple proteins&hellip; the computation outlook seems large). Their methodology revolves around <strong>stacking multiple protein structures (ensemble)</strong> and transitioning between them from rapid atomic vibrations to slower domain rearrangements, which is somewhat related to Markov&rsquo;s formalisms of Partially Observable Markov Decision Processes in <a href="#reinforcement-learning">Reinforcement Learning</a>, where we also (generally) stack frames when this problem arise (again! for later. And this is not the only method!). Back at the experimental methods, there is a foreseeable future of datasets containing these just like PDB and such. Well, there is apparently a <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3096476/" target="_blank" rel="noopener noreferrer">method in combining multiple datasets</a>, as well as developing NMR-only datasets like the one mentioned <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10767026/" target="_blank" rel="noopener noreferrer">here</a>. The only thing we can do is wait for more NMR dataset instances&hellip; unless we find out a faster technique or use what we have now (including the NMR or not).</p>
+<p>So we can safely say that the <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9815721/#:~:text=While%20the%20importance%20of%20protein%20structure%20cannot,a%20typical%20protein%20adopts%20multiple%20stable%20conformations." target="_blank" rel="noopener noreferrer">protein folding process isn&rsquo;t a one-time event.</a>. It is a dynamic and often reversible process. Some need the help of other proteins to fold (chaperones), some unfold (denure) physiologically (like the natural process of protein refolding in muscles to allow muscles to stretch and recoil), others unfold to certain conditions. Amazing!!</p>
+<ol start="2">
+<li>The functional and interactional formalism: which would describe the proteins activity within the broader cellular context, interacting with other molecules and their surroundings (Protein-Protein interactions, Ligands, DNA: Which all seem to be partially or fully the target of AlphaFold multimer and Alphafold 3. They&rsquo;re still not following the first formalism, though) to preform specific biological functions. It would involve:</li>
+</ol>
+<ul>
+<li><strong>Network dynamics:</strong> One a proteins action influences the behavior of an entire cellular pathway or network of interacting molecules.</li>
+<li>Kinetic properties: The rate and speed of biological reactions and interactions (enzymes kinetics, etc)</li>
+<li><strong>Allosteric regulation:</strong> The binding at one side on a protein affects the function at a different, distant site by changing the proteins shape along with its dynamics.</li>
+<li>Environmental effects like solution conditions (pH, temp, salt conc) and presence of other molecules (ligands, other proteins) on the overall behavior of the protein.</li>
+</ul>
+<p>There are also point mutations, which implies a single AminoAcid mutation that caused a structural defect. Similar to a pawn being promoted to a queen in chess that wrecks havoc on the advantage bar <a href="#reinforcement-learning">which may be related to Reinforcement learning</a>, too. This is also similar to the Network dynamics and allosteric regulation. Point mutations are the trigger of an ensemble of cascades of events. These are the structural basis for diseases, more on that at the <a href="#disease-prediction">Disease prediction</a> section.</p>
+<blockquote>
+<p>It is advised to re-read this section after we&rsquo;re done with the small biology lesson.</p>
+</blockquote>
+<hr>
+<h2 id="a-small-biology-lesson">A Small Biology Lesson:</h2>
+<p>Proteins are made from instructions made by the DNA, and the RNA (the messenger of DNA). It, the protein, then folds to a 3D structure to do a specific function in the body. The structure itself is destined by <em>a mostly deterministic process</em> (i.e. native conformation).</p>
+<blockquote>
+<p>More on that at <a href="#pdb-bias">PDB bias</a> section.</p>
+</blockquote>
+<p><figure class="md-image">
+      <img
+        src="/papers/paper4/0KFB68iZ7qftEwSqI-768x447.png"
+        alt="0KFB68iZ7qftEwSqI-768x447.png"
+        loading="lazy"
+      />
+    </figure><br>
+Source: <a href="https://en.wikipedia.org/wiki/Homology_modeling" target="_blank" rel="noopener noreferrer">https://en.wikipedia.org/wiki/Homology_modeling</a> an image of the DHRS7B protein (dehydrogenase/reductase 7B) created using Ribbon diagrams and rendered with PyMOL</p>
+<p>The AminoAcid sequence is the linear order of amino acids in a protein chain (referred to as the backbone or the &ldquo;main chain&rdquo;), meaning that we&rsquo;re currently hitting the main component of the protein structure.</p>
+<p>AminoAcids (AA&rsquo;s) are made up of a carbon atom with a carboxyl (COOH, acidic) and an amine group (NH2, written H2N which is a base) each to the center (the carbon). The north bond being the Hydrogen on the north, and the last bond (south of the AA, called R group) would be either of the side chains.<br>
+Please don&rsquo;t mind the pole directories I mentioned.</p>
+<p><img src="Pasted%20image%2020251110110650.png" alt="Pasted image 20251110110650.png" /><br>
+<img src="Pasted%20image%2020251110110830.png" alt="Pasted image 20251110110830.png" /><br>
+<img src="Pasted%20image%2020251110111132.png" alt="Pasted image 20251110111132.png" /><br>
+Source: <a href="https://www.youtube.com/watch?v=P_fHJIYENdI" target="_blank" rel="noopener noreferrer">Veritasium</a>, attempting multiple different side chains, which are later binded to other AAs forming a linear chain (that is different from a side chain). That straight line represents a linear chain of the carbon (center of the amino acids!), each bound to a side chain [till they form a protein or become part of a complex?]</p>
+<p>This random choice between different side chains ends up forming the 20 AA&rsquo;s that exist in nature, not taking into account the unknowns, and the rare AA&rsquo;s. They&rsquo;re encoded in Alphabetical names, such as &ldquo;<code>U</code>&rdquo; for the Selenocysteine AminoAcid (there are some not encoded with their respective starting word). The unknown one(s), or harder to distinguish between other AminoAcids are as following:</p>
+<ol>
+<li>
+<p><code>B</code> (Difficult; may be a <code>D</code> or <code>N</code>),</p>
+</li>
+<li>
+<p><code>Z</code> (Difficult; may be <code>E</code> or <code>Q</code>),</p>
+</li>
+<li>
+<p><code>J</code> (Difficult; may be <code>L</code> or <code>I</code>) and finally:</p>
+</li>
+<li>
+<p><code>X</code>(Undetermined or any unknown AA. Very interesting).</p>
+</li>
+</ol>
+<p>Along with the rare AA&rsquo;s, which are the AA&rsquo;s no. 21 and 22 respectively:</p>
+<ol>
+<li>
+<p><code>U</code> and</p>
+</li>
+<li>
+<p><code>O</code></p>
+</li>
+</ol>
+<p>Some of these are not needed in human trials, for example the <code>O</code>, found in certain archaea and bacteria unless there are specific needs or research to be conducted on these organisms.</p>
+<p>You can call the 22 AminoAcids &ldquo;Proteinogenic&rdquo; AminoAcids, which implies that they are used for building the protein from the sequencing and folding process. It&rsquo;s important to note that there are over 500 naturally occurring AminoAcids that have been identified, in which case are called &ldquo;Non-proteinogenic&rdquo; AminoAcids. They are beyond the scope of proteins and the alphabetical order, as in they do not serve the function as to become proteins, but they serve other biological functions. The potential of creating <a href="https://www.nature.com/articles/nchembio847" target="_blank" rel="noopener noreferrer">newer AminoAcids</a>, however, are being researched by modifying the R group (the &ldquo;legally&rdquo; modifiable part). Unless you modify the core parts (COOH and NH2), in which the AA may not be recognized by the cells machinery</p>
+<p><img src="Sequential%2C%20Structural%20and%20Function%20representations%2C%20as%20from%20our%20previous%20blogpost.%201.webp" alt="Sequential, Structural and Function representations, as from our previous blogpost. 1.webp" /><br>
+Source: <a href="https://www.ml6.eu/en/blog/esm3-the-frontier-of-protein-design" target="_blank" rel="noopener noreferrer">https://www.ml6.eu/en/blog/esm3-the-frontier-of-protein-design</a></p>
+<p>Sequence determines structure, structure determines function &mdash; and .. Oh, wait:</p>
+<p><img src="Pasted%20image%2020251125121847.png" alt="Pasted image 20251125121847.png" /><br>
+Source: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12467925/" target="_blank" rel="noopener noreferrer">https://pmc.ncbi.nlm.nih.gov/articles/PMC12467925/</a> an amazing article about the De novo protein design of &ldquo;RF diffusion&rdquo;. They also have an amazing table on the protein-design workflow!</p>
+<p>So we hit a &ldquo;RF diffusion&rdquo; spot here, where we can and are able to &ldquo;create&rdquo; proteins for specific functions (extremely cool I know!) that we dictate (inputs being PDB) in a model for it to produce a 3D image of the protein design. They use the Proteinogenic 20 (sometimes the other two) for this, not by creating new AA&rsquo;s! The process is very similar to creating images using AI, Briefly; having noise at the beginning, then iteratively removing the noise to generate a new protein structure that is a &ldquo;plausibly folded structure&rdquo;, maybe even incorporating a novel proteinogenic AminoAcid (engineered) in the diffusion process (or other parameters like symmetry specifications and length ranges). Keep in mind that this is a generated backbone, and we still don&rsquo;t know its sequence of AAs.</p>
+<p>Small note: It is very similar to predicting the next word in a sentence, where we iteratively remove the noise, and the model starts seeing patterns linking the text of description we gave (tokens) to its embedding space tokens. Its also similar to seeing patterns out of a seemingly redundant static noise. Whatever, It is deemed for another talk.</p>
+<figure class="md-image">
+      <img
+        src="/papers/paper4/Screen-Shot-2023-01-10-at-3.26.51-PM-750x366.png.webp"
+        alt="Screen-Shot-2023-01-10-at-3.26.51-PM-750x366.png.webp"
+        loading="lazy"
+      />
+    </figure><p>Source: <a href="https://zontal.io/rfdiffusion-leveraging-the-power-of-ddpms-to-generate-protein-sequences-and-structures-2/" target="_blank" rel="noopener noreferrer">https://zontal.io/rfdiffusion-leveraging-the-power-of-ddpms-to-generate-protein-sequences-and-structures-2/</a></p>
+<p>There are more nuances to that, such as using <a href="https://github.com/dauparas/ProteinMPNN" target="_blank" rel="noopener noreferrer">ProteinMPNN</a> to design a sequence of AAs that is most likely to adopt that specific 3D shape, then use AF 2 or 3 to verify the structure viability (sanity checking if it will fold back into the designed structure) before costly lab synthesis begins, that is, if we were attempting to create the protein.</p>
+<blockquote>
+<p>Psst! This model is a fine-tuned version of the RoseTTAFold structure prediction network (similar to AlphaFold)! Check out <a href="https://www.bakerlab.org/2023/07/11/diffusion-model-for-protein-design/" target="_blank" rel="noopener noreferrer">BakersLab</a>!!</p>
+</blockquote>
+<p>[More on that is a potential for integration in this article]</p>
+<h3 id="building-up-from-the-smallest-to-the-biggest-protein-component">Building up from the smallest to the biggest protein component</h3>
+<p>The levels of protein structure are as follows:</p>
+<h4 id="1-the-primary-structure">1) The Primary Structure</h4>
+<p>These are the most fundamental level of &ldquo;structure&rdquo;, which refers to the linear sequence of AminoAcid themselves. The covalent bonds (Called &ldquo;peptide bonds&rdquo; here, linking an AA with the other. and sometimes called disulfide) are keeping them intact (more on that below). Contrary (Opposite) to the interactions other than that, which are to be considered &ldquo;absent&rdquo; within the primary structures stability and integrity under stress.<br>
+<img src="Pasted%20image%2020251129112651.png" alt="Pasted image 20251129112651.png" /><br>
+Source: <a href="https://www.genome.gov/genetics-glossary/Amino-Acids" target="_blank" rel="noopener noreferrer">https://www.genome.gov/genetics-glossary/Amino-Acids</a></p>
+<p>There are also conformational freedom, which are by the partial double-bond, which are also called &ldquo;trans conformation&rdquo; of the peptide bond between two AA&rsquo;s and its strength is between single and fully double bonds. What matters here is that the angle is nearly always fixed at 180 between only two AA&rsquo;s, conveying a planar structure. So the bond has the proteins on a &ldquo;strong approximation&rdquo; set of an absolute physical constant angle called 𝜔 (omega).</p>
+<blockquote>
+<p>Note: The Carbon (C𝛼) backbone are bonded with NH2 (single bonds, flexible) and have an angle, <strong>which are called Phi ϕ torsion angles</strong>, while the Carbon C𝛼 and COOH bonds angles are <strong>called Psi 𝜓 torsion angles.</strong></p>
+</blockquote>
+<p>The &ldquo;Ramachandran plots&rdquo; are the plots defining the sterically allowed conformations of the psi and phi angles (so atoms wont go crashing on each other).<br>
+<img src="Pasted%20image%2020251129132710.png" alt="Pasted image 20251129132710.png" /></p>
+<h4 id="2-the-secondary-structure">2) The Secondary Structure:</h4>
+<p>These are alpha helices and beta sheets. The existence of specific and stable Secondary Structure</p>
+<img src="Pasted%20image%2020251129125947.png" alt="Pasted image 20251129125947.png" /><p><a href="https://chem.libretexts.org/Bookshelves/Organic_Chemistry/Organic_Chemistry_III_%28Morsch_et_al.%29/26%3A_Amino_Acids_Peptides_and_Proteins/26.10%3A_Protein_Structure" target="_blank" rel="noopener noreferrer">Source compressed</a>: The main chain (called the Cα coordinates)</p>
+<h4 id="3-the-tertiary-structure">3) The tertiary structure</h4>
+<p>Since the tertiary structure is the overall, complex 3D shape of a single polypeptide chain, which includes all the secondary structure elements and how they fold, there is a conclusion that the proteins tertiary structure (the 3D fold) is determined by the interactions between the AA side chains (R group) and between other side chains with other! Their interactions (more on interactions below) cause the stabilization of the 3D shape, there is also an influence between side chains and the atoms of the peptide backbone.</p>
+<blockquote>
+<p>The stressors of proteins are heat, pH salinity and other chemical treatments that make the protein &ldquo;denure&rdquo; (to break down), with the exception of one structure:<br>
+Having the <em><strong>primary structure</strong></em> intact during stress provides <strong>renaturation potential</strong>! Implying that for the other two structures (SS and TS), which are greatly affected by the stressors of proteins, can REFOLD back (with gentle reintroduction to its normal conditions) to its correct functional tertiary structure all due to the proteins primary structure. The only thing(s) that can break the proteins primary structures are harsh chemical treatments or specific enzymatic action (proteolysis) to break the covalent bonds. This deserved to be at <a href="#disease-prediction">Disease prediction</a></p>
+</blockquote>
+<h4 id="4-quaternary-structure">4) Quaternary Structure</h4>
+<p>For the last structure, there is Quaternary protein structure (complexes), which has proteins consisting of the (1), (2), (3) structures, called now &ldquo;subunits&rdquo; (two or more proteins in the entire complex) that we mentioned.</p>
+<p><strong>Summary:</strong><br>
+<img src="71225d815cafcc09102504abdf4e10927283be98%201.png" alt="71225d815cafcc09102504abdf4e10927283be98 1.png" /><br>
+Source: <a href="https://www.khanacademy.org/science/biology/macromolecules/proteins-and-amino-acids/a/orders-of-protein-structure" target="_blank" rel="noopener noreferrer">https://www.khanacademy.org/science/biology/macromolecules/proteins-and-amino-acids/a/orders-of-protein-structure</a> (Honestly an amazing demonstration for the bigger picture view, maybe have some terminologies in brackets like pleated sheets should be &ldquo;Beta Pleated sheets&rdquo; but that&rsquo;s only to aid beginners in learning structure terms).</p>
+<p>We can conclude that</p>
+<p>In our static protein structure prediction problem, we can safely say that the strongest predictors are their primary structure, <strong>the sequences</strong>. It is a deterministic way of finding out the final 3D structures. Their properties also matter:</p>
+<ol>
+<li>
+<p>The order of AA&rsquo;s: Which is the primary structure predictor. This contains all the information needed for the protein to spontaneously fond into its correct, functional 3D shape.</p>
+</li>
+<li>
+<p>The types of AAs</p>
+</li>
+</ol>
+<p>These two together are crucial as they dictate which interactions can occur in one of the two interactions; the predominant <em><strong>non-covalent interaction(s)</strong></em>: hydrophobic effects, H-bonds, van der walls forces and salt (ionic bonds) bridges. They are weak individually but act together (thousands of them!) to stabilize the protein. Their drawbacks is that how easily they&rsquo;re disrupted from heat or changes in ph. We also assume no extraordinary environmental conditions as mentioned in <a href="#pdb-bias">PDB bias</a>.</p>
+<p>And one <em><strong>covalent interaction</strong></em>: disulfide bridges (or bonds). These bonds are stronger than the former mentioned non-covalent bonds. There is already a foreseeable potential of its aid in the <a href="#disease-prediction">Disease prediction</a> section, maybe also a previous section that you can connect to.</p>
+<p>These interactions as a whole put us on the importance of the <a href="#2">2) MSA</a> MSA). Which has one sequence far away from the other (in the same chain, speaking of a single protein) that are touching [Important finding!]</p>
+<ol start="3">
+<li>The No. of AA&rsquo;s which defines the overall length of the chain. This is relevant because it defines the size and complexity of the resulting structure. The longer the chain the more opportunities it has for more folding</li>
+</ol>
+<p>The interactions were <em><strong>not</strong></em> explicitly fed to the algorithm. It implicitly learned the the. Maybe that&rsquo;s for the best, as sometimes exploration (<a href="#reinforcement-learning">RL!</a>) is more important. Although in AF1, it is fed during <a href="#stage-two">Stage two</a>. In other architectures, however, it is learned implicitly through the scaling of the network and data.</p>
+<p>Keep in mind that we have protein (or related) &ldquo;lessons&rdquo; also scattered around the document, as some information will be pulled when required.</p>
+<p>Now, let us us demonstrate the data main dataset at hand:</p>
+<h2 id="pdb">PDB</h2>
+<p>The central protein databank has explicit <a href="https://www.ebi.ac.uk/training/online/courses/exploring-pdb-entry/" target="_blank" rel="noopener noreferrer">entries</a> of:</p>
+<ol>
+<li>
+<p>The 3D atomic coordinates (fundamental target data for later) which allows the visualization of the final static snapshot of the folded protein. This is a very precise X, Y and Z location of every non-hydrogen atom (sometimes  hydrogen) in the resolved structure.</p>
+</li>
+<li>
+<p>Bound Ligands/Molecules which are coordinates of water, ions (zinc, magnesium), drug molecules that are bound in the structure. They are non-proteins that were co-crystalized or co-solved with the proteins.</p>
+</li>
+<li>
+<p>Multiple conformations (limited): NMR ensembles are models, meaning a small set of 10-20 representative coordinate sets</p>
+</li>
+<li>
+<p>Secondary Structure (SS) assignments (derived from 3D structures for a deterministic assignment, and derived from the AA sequence for a probabilistic assignment).<br>
+<figure class="md-image">
+      <img
+        src="/papers/paper4/1-s2.0-S0079610716300499-gr5_lrg.jpg"
+        alt="1-s2.0-S0079610716300499-gr5_lrg.jpg"
+        loading="lazy"
+      />
+    </figure><br>
+Source: <a href="https://www.sciencedirect.com/science/article/pii/S0079610716300499" target="_blank" rel="noopener noreferrer">https://www.sciencedirect.com/science/article/pii/S0079610716300499</a></p>
+</li>
+<li>
+<p>Experimental metadata:</p>
+</li>
+</ol>
+<ul>
+<li>Experimentation methodology: X-ray crystallography (traditional, accounting for ~87% of all the PDB archive), NMR (, Cryo-em (Cryo is advancing rapidly!), which are the big three used in PDB. There are still other techniques used like SAXS, CD and other. Maybe also the <strong>experimental conditions</strong> that are crucial as indicated in the <a href="#formalisms-and-evaluation">Formalisms and evaluation</a> section</li>
+<li>The resolution or quality of the data, where higher resolution indicate a better &ldquo;zooming in&rdquo; the protein to identify the structure and its fine details. The higher the (Ang.), the lower resolution that we get. Similar to a pixelated photo, you can see the backbone, but not the individual parts like atoms and side chains and the opposite applies here.</li>
+<li>R-factor and R-free, B-factors, clash score, RSR and other. Check out <a href="https://www.rcsb.org/docs/general-help/assessing-the-quality-of-3d-structures#:~:text=mismatches%20between%20the%20model%20and%20the%20experimental,to%20errors%20in%20model%20building%20and/or%20refinement." target="_blank" rel="noopener noreferrer">the amazing documentation BY PDB assessing the quality linked here</a></li>
+<li>Source organism, and other data like sample preparation and refinement statistics.</li>
+</ul>
+<p>The potential of application (of the quality and metadata) relies on their ability to be ingested to the Neural Network (NN) and to reduce their weight, as the less accurate the experimentally decided structure is the lower value we have on its potency to the predictions outputted. Surface side chains, disordered regions and flexible loops are other examples on weak or no experimental data due to their inherent motion or disorder in the experiment. They can be useful, however, if we were trying to innovate something here&hellip;</p>
+<p>Some of which should be derived (not explicitly stated):</p>
+<ul>
+<li>Protein dynamics and flexibility</li>
+<li>Allosteric Mechanisms</li>
+<li>Network dynamics</li>
+<li>IDRs</li>
+<li>Point Mutation Effects</li>
+<li>Active identification and enzyme mechanisms</li>
+<li>Protein-Protein interaction (PPI) interfaces</li>
+<li>Protein Stability</li>
+</ul>
+<p>Remember the second formalism of proteins? The one about enviroments?<br>
+Meaning that we have DATA from the infamous <a href="https://www.rcsb.org/#Category-deposit" target="_blank" rel="noopener noreferrer">ProtienDataBank</a> (PDB), in which (commonly) gotten from the X-ray crystallography has an environment which probably misses:</p>
+<ul>
+<li>Non-physiological PH or salt conc. (These were used to force crystallization)</li>
+<li>Low temperatures (almost always, unless specialized experiments. Room temperature is increasingly becoming the norm here)</li>
+<li>Absence of binding partners or cofactors that normally are present</li>
+<li>Dehydration, etc</li>
+</ul>
+<h3 id="pdb-bias">PDB bias</h3>
+<p>*This follows the aforementioned <a href="#formalisms-and-evaluation">Formalisms and evaluation</a>. It also uses &ldquo;AF1&rdquo; (our target understanding algorithm) to demonstrate the use of PDB. Targeting the missed second formalism as well as other notions</p>
+<p>Protein folding, as a problem statement in itself is both a deterministic (somewhat NOT random) and stochastic process (somewhat random). Its determinism comes from the AA&rsquo;s specific sequence, as <em><strong>most</strong></em> proteins with the exact same AA sequence have obviously the same shapes (scientifically, the &ldquo;lowest-energy state&rdquo;), while the environmental factors and random thermal motions (pH, ions, ligands, etc) add the stochastic elements in the folding process.</p>
+<p><em><strong>AF1 uses the deterministic side of the equation.</strong></em> In other words, they assume stable environmental and specific laboratory conditions. At the worst case scenario, there there will be misfolding, and all the bad things could happen if a protein is introduced to an extreme environment.</p>
+<p>At every other scenario, even a fever of 39c or so, there is little to no effect to the protein and stochasticity which implies a more deterministic outlook that we have currently have (sufficient average determinism). Only after that point, though, does it compromise proteins and its folding process, and the chances increase from thereon.</p>
+<p>The uncertainty in AF1 predictions, where even a 1-2Ang. difference is considered uncertain, is much larger than a 2C shift in temperature. Though marginal activity may drop but still has no significant effect, maybe even more &ldquo;flexible&rdquo; and within biological tolerance (The effects that I&rsquo;m currently aware of. DO NOT solidify that as a foundational barrier to your brain).</p>
+<p>Therefore, unless we&rsquo;re making protein fold in &ldquo;possible&rdquo; scenarios, this may not matter as much. It&rsquo;s great to keep this in mind, though, as maybe you&rsquo;d want to make a fever model or a very mythical application in which I do not endorse, maybe a certain environment-based protein folding process in the future that adds on to that layer, or something according to your liking.</p>
+<p><strong>And also to note</strong> that there are other databases (DB) that were used by AF1, such as UniProt (big brain), Uniclust (targeted brain), BigFantasticDatabase (BFD) and MGnify. Some of which DBs are related to the protein itself and its sequence and such, and the other may be related to the <a href="#2">2) MSA</a> MSA). These were skimmed as we&rsquo;ll give them their fair chance later on in the engineering part.<br>
+In the <a href="#potential-data-integration">Potential data integration</a> section, there can be an extension when looking at the several different and unmentioned tools that we have, depending on what we want to model in the first place.</p>
+<h4 id="alphafold-protein-structure-database-afdb">AlphaFold Protein Structure Database (AFDB):</h4>
+<p>Now we know about the Protein Data Bank (PDB) and many other available Databases to tackle the protein folding problem, it&rsquo;s great to know that the predictions utilizing the PDB database (the one we&rsquo;re building for example) have their own database of predictions. There are over 200 million protein &ldquo;highly accurate&rdquo; structure prediction from the AF2 algorithm. We have the confidence scores of the fold predicted compared to the structure from the PDB called per-residue confidence score (pLDDT, which should be over ≥ 90 to be considered &ldquo;Very high confidence&rdquo;).</p>
+<p><figure class="md-image">
+      <img
+        src="/papers/paper4/molecules-28-07462-g006-550.jpg"
+        alt="molecules-28-07462-g006-550.jpg"
+        loading="lazy"
+      />
+    </figure><br>
+Source: <a href="https://www.mdpi.com/1420-3049/28/22/7462" target="_blank" rel="noopener noreferrer">https://www.mdpi.com/1420-3049/28/22/7462</a> Red shows high confidence areas and blue indicating a lower confidence score. They were used as primary losses in AF2.</p>
+<p>The lower we go, the more likely we reach a &ldquo;flexible&rdquo; protein zone of prediction, meaning that the algorithm cannot predict it well (or it doesn&rsquo;t have the information that&rsquo;s &ldquo;satisfactory&rdquo; level to model these, or maybe they&rsquo;re just random regions or coils &ldquo;IDRs&rdquo;).</p>
+<p>These aren&rsquo;t ground truth data per se, but they have the potential to serve something, like maybe giving it to the scientists once again to save time evaluating it&rsquo;s structure if we&rsquo;re already at ~90% (confidence when experimenting on newer proteins). As for the their accuracy, it turned out that the predictions were actually <a href="https://www.ebi.ac.uk/training/online/courses/alphafold/validation-and-impact/how-accurate-are-alphafold-structure-predictions/" target="_blank" rel="noopener noreferrer">comparable to an experimentally determined structure</a>, as maybe we&rsquo;ve had the majority of the data handed by the PDB is labeled as the &ldquo;predicted and replicated&rdquo; stage relative to AFDB. Experimentations done there may reveal useful outliers but the generalist model for this very specific task seems to be going towards completion (with a human-in-the-loop!). Here&rsquo;s the catch: its <a href="https://www.ebi.ac.uk/training/online/courses/alphafold/an-introductory-guide-to-its-strengths-and-limitations/strengths-and-limitations-of-alphafold/" target="_blank" rel="noopener noreferrer">limitations stem at a what it cannot do,</a>meaning that although we have solved the &ldquo;structure prediction&rdquo; problem, the proteins are dynamic and w</p>
+<p>Nevertheless, it&rsquo;s great to mention AFDB</p>
+<p>It is also to be noted that reliance on predictions to make predictions (or in other words relying on theories to make a theory) isn&rsquo;t in essence a bad thing,<br>
+as maybe theory 1 may be right (proved or assumed from the conclusions it produces). which makes all the other theories it produces plausible.</p>
+<h3 id="reinforcement-learning">Reinforcement learning</h3>
+<p><img src="Pasted%20image%2020251223213252.png" alt="Pasted image 20251223213252.png" /><br>
+Source: Reinforcement Learning by Maxim Lapan (Cool book)</p>
+<p>How can you apply reinforcement learning here? The insight was mainly formed Because reinforcement learning (RL) has both stochasticity (at the beginning with possible environmental changes), and also has deterministic phases in later stages (by decreasing the epsilon-greedy parameter) in some foundational algorithms. But that&rsquo;s only intuition, and not truly touching on the main idea of the document! Like increasing stochasticity the more temperature we rise in the folding process, and subsequently decrease the determinism factor in it! That&rsquo;s a similarity remark in processes, which doesn&rsquo;t provide actual &ldquo;insights&rdquo; unless</p>
+<p>You can start small, because the reward signal maybe is the challenging part. As some are sparse and some are goal-based rewards (which require knowing the answer),</p>
+<p>But if we think about it as a non-originator algorithm (not being the core algorithm), RL may shine in refining coarse predictions from AF1 itself, that part that AF1 missed which is the stochastic parts, in which we have:</p>
+<ul>
+<li><strong>State:</strong> Current structure from AlphaFold, as well as the MSA and probably every data ingested at the <a href="#implementation-and-intuition">Implementation and Intuition</a></li>
+<li><strong>Action:</strong> Local perturbation (adjust a region)</li>
+<li><strong>Reward:</strong> Energy decrease + structural validity</li>
+<li><strong>Policy:</strong> Learn to make smart local adjustments that respect physics!</li>
+</ul>
+<p>Maybe if we even incorporate video output to the pipeline, for the algorithms to have a chance in modeling the complexities and incorporate a game just similar to <a href="https://en.wikipedia.org/wiki/Foldit" target="_blank" rel="noopener noreferrer">Foldit</a> (molecular dynamics intact and have a state), then, we can probably think about their practical extension and application (along with adding players back into the field&hellip; or any other field, really).</p>
+<h1 id="implementation-and-intuition">Implementation and Intuition:</h1>
+<h2 id="bigger-picture-are-they-really-not-using-physics-module-anymore-meaning-the-explicit-stage">Bigger Picture [Are they really not using physics module anymore? meaning the explicit stage]</h2>
+<p>There is an input, and there is an output (Stage 1). Then, there is a Structural Construction stage, where we utilize physics-based constraints on all the inputs from stage 1 to get the final 3D coordinates. Then, optionally, we attempt to reduce the energy to its lowest possible energy state (of course, based on what the model can handle with its current complexity!) using also a physics-based energy minimization. This third phase uses the 2nd stage as input and has an output of a refined 3D coordinates implying a yay!-level-lower-energy state of the protein predicted.</p>
+<p>But since <em><strong>most</strong></em> architectures aren&rsquo;t using the &ldquo;physics&rdquo; aspect as modules anymore, as that they avoid explicitly encoding the physics by gaining enough PDB examples, one can safely say that there is a way to skip that part to learn the lowest-energy state (the folding process) and go pure pattern recognition from MSA&rsquo;s and Structural data. This is a possibility to note.</p>
+<p>AF1 didn&rsquo;t represent the minimum complexity of modeling proteins, it achieved a rather significant advancement than template-based modeling (same protein == same structure) and Ab initio which uses physics energy functions to simulate folding (in which also rarely worked well, but hey, potentials are everywhere). Basically, you can say AF1 is the proof-of-concept that one can apply DL techniques on proteins, with other architectures using the same dataset of PDB, also using different methods such as eliminating MSA and such.</p>
+<p>Maybe all it needed was more essentials and lesser complexity.</p>
+<h2 id="training">Training</h2>
+<p>The inputs to the Neural Network are as follows:</p>
+<h4 id="1-aa-sequence">1) AA sequence:</h4>
+<p>It is given from PDB as a three letter word; <code>ALA</code> for Alanine, <code>CYS</code> for Cysteine, <code>ASP</code> for Aspartic Acid, etc) that we convert to their standard one-letter codes that we mentioned in <a href="#a-small-biology-lesson">A Small Biology Lesson</a>.</p>
+<p>&ldquo;<code>MKTAYIAKQRPGLV</code>&rdquo; an example. They can be subunits as in quintenary  structures (hemoglobin, which has 4 subunits of these sequences) or a simple sequence of a single protein.</p>
+<h4 id="2-msa">2) MSA:</h4>
+<p>In simple terms, we see if two AA stay conserved across different specifies and other AA that may have co-evolved. Meaning that they mutate together, and that often signals that they&rsquo;re often close in physical contact when folded to 3D structure. This is crucial input to the NN.</p>
+<p>Take a single protein for example, we&rsquo;ll call it hemoglobin as a scientific name over &ldquo;blood&rdquo; (Bear with me for the simplification):</p>
+<p><code>MKTAYIAKQRPGLV</code></p>
+<p>So if we say that &ldquo;M&rdquo; and &ldquo;T&rdquo; are pretty close in that 1D sequence, it may be temping to say they are close to each other in 3D. but proteins can surprise you with how far they actually are. One can be only a single position away in the sequence</p>
+<p>For this specific case, these are called structural significance. As in, <code>M</code> and <code>T</code> maybe are not close in 3D space, but they are important for the structure itself. Don&rsquo;t mix the two ideas.<br>
+[Sudden introduction to MSA]</p>
+<p>Imagine the same protein in 1,000 different species: ```</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>Human: MKTAYIAKQRPGLV... 
+</span></span><span style="display:flex;"><span>Chimp: MKTAYIAKQRPGLV... (99% identical) 
+</span></span><span style="display:flex;"><span>Mouse: MKTAYISKQRPGLV... (changed position 7: A→S) 
+</span></span><span style="display:flex;"><span>Fish: MKTVYISKERPGLV... (changed positions 4,7,9) 
+</span></span><span style="display:flex;"><span>Bacteria: MKTVFISQERPKLV... (many changes) 
+</span></span></code></pre></div><p>Say that we conclude that positions 7 and 150 are in contact in 3D (We x&rsquo;rayed it):</p>
+<p>If position 7 is changed from AminoAcid<code>A</code> to  AminoAcid <code>S</code>, position 150 (in which it is too far to be written sequentially here) also changes to maintain interaction (Which is called: Co-Evolution!). This is the point of MSA and homologs in general, which is to find this interaction and conserved regions by arranging related protein sequences).</p>
+<h4 id="co-evolution-vs-general-conservation">Co-evolution vs general conservation</h4>
+<p>and we have &ldquo;General Conservation&rdquo;, which is the simplest signal reflecting the structural importance of an AA position. Meaning that highly conserved sites are critical for:</p>
+<p>So we&rsquo;re basically saying here: &ldquo;If two AA positions in a protein are close (in the final structure), they likely have co-evolved over millions of years.&rdquo;</p>
+<h4 id="whats-the-correlation-between-co-evolution-and-contact-in-the-3d-structure-to-do">What&rsquo;s the correlation between co-evolution and contact in the 3D structure?! [TO DO]</h4>
+<p><img src="RPLP0_90_ClustalW_aln%201.gif" alt="RPLP0_90_ClustalW_aln 1.gif" /><br>
+By Miguel Andrade at English Wikipedia - Transferred from en.wikipedia to Commons., CC BY-SA 3.0, <a href="https://commons.wikimedia.org/w/index.php?curid=3930704" target="_blank" rel="noopener noreferrer">https://commons.wikimedia.org/w/index.php?curid=3930704</a></p>
+<h4 id="orphan-proteins">Orphan proteins</h4>
+<p>These are proteins without homologs (No MSA depth, in other words, has no neighbors: similar to the <strong>Tetherin</strong> in vertebrates). Here, the sequence itself becomes the only input available for the NN, alongside the meaning that AF1 gets zero co-evolutionary information. There are other algorithms utilizing language models like RGN2 and ESMFOLD and trRosettaX-Single to predict structures. One may think of combining the two, or utilizing the other when there are no homologs available, the other may think of generating Synthetic MSAs (beneficial for Alphafold and its variants) like GhostFold and such. So anything out of MSAs is definitely out of AF1 (unless you&rsquo;re seeing something that I cannot see).</p>
+<h4 id="remote-or-distant-homologs">Remote or distant homologs</h4>
+<p>There are certain proteins that look similar to certain others in their 3D structure, while oftentimes having also similar functions, all due to having descended from a common ancestor (being evolutionary related). But at the same time, they have a VERY LOW AminoAcid sequence-sequence similarity, maybe even undetectable because of the huge evolutionary time.</p>
+<p>So despite the vast differences in their AA sequence, the structure AND function are the same as other sequences! There are tools that negate this type of homolog when searching for MSA&rsquo;s, but certain others (like the &ldquo;HHblits&rdquo; and such that we&rsquo;ll be applying in the <a href="#dataset-and-preparation-80">Dataset and preparation ~80%</a> section) are more sensitive and specifically designed to detect such homologs.</p>
+<p>The use cases may be that if we had a new protein sequence without knowing their functions, we could search for a possible remote homolog to infer the functions.</p>
+<p>Therefore, we can conclude that we have two input features:</p>
+<ol>
+<li>The AA sequences along with the</li>
+<li>MSA</li>
+</ol>
+<p>The Cα coordinates are only given throughout training as ground-truth data that we derive &ldquo;The targets&rdquo; from, not during inference.</p>
+<h3 id="targets-loss-functions-bad">Targets (Loss functions) [Bad]</h3>
+<p>Loss functions are the predicted value or representation and comparing it to the actual representation that it should have predicted (Ground-truth labels). In other words, the difference (minus sign here) between the predicted value and its actual value. <strong>The folding code (rules and interactions) are learned here.</strong> The loss function guides the massive number of weights to learn the correct patterns, meaning that the NN optimizes for structural accuracy: implicitly learning the folding code that is mentioned at the <a href="#the-problem-statement">The Problem Statement</a>.</p>
+<p>We use the PDB ground truth labels (also called Target Outputs) to minimize the loss function and update the NN weights. Here, we use two matrices computed from the Cα coordinates to use as target values (ground truth). They&rsquo;re pure mathematics:</p>
+<h3 id="the-target-outputs">The Target Outputs</h3>
+<p>They&rsquo;re split between two groups:<br>
+Primary target outputs: The final 3D structure<br>
+Neural Network target outputs: The Torison angles as well as the</p>
+<h5 id="1-distance-matrix-primary-target-output">1) Distance matrix (Primary target output):</h5>
+<p>A more clear definition for clarity: They&rsquo;re the &ldquo;precise&rdquo; coordinates of 3D positions (X - Y - Z) orthogonal coordinates, all measured in Ångströms (which are really small!) for every atom in a proteins entirety of a tertiary or quaternary structure, including the backbone and side-chain atoms. Other data includes: occupancy (likelihood of protein binding to a specific site), temperature factors, and element names. &ldquo;Cα coordinates&rdquo;, which stand for the alpha-carbon in the AA backbones! Their always in the backbone, which are different than the beta-carbons (Cβ) which are on the side chains. There is an important distinction to make here, though:</p>
+<ol start="2">
+<li>Atomic coordinates (our data) every atom name in the molecule</li>
+<li>The primary structure, which is just a string of AminoAcids mentioned in the <a href="#implementation-and-intuition">Implementation and Intuition</a>.</li>
+</ol>
+<blockquote>
+<p>Hydrogen being a &ldquo;sometimes&rdquo; in the data is due to its weak signal and experimental limitations. They can be also too predictable, making it wiser&quot; to omit them (increasing computational efficiency) even though they are the crucial for protein folding and function.</p>
+</blockquote>
+<h4 id="b-auxiliaryintermediate-target-outputs">B) Auxiliary/Intermediate target outputs</h4>
+<ol>
+<li>Angle Matrix (exception): It uses the backbone and side-chain dihedral angles. Basically the rotational <strong>degrees of freedom</strong> that define the SS (directly) of Alpha and beta sheets! They were learned and provided knowledge on how the backbone could physically bend and twist. Phi and Psi are also called Backbone Torsion Angles. These were computed on a separate NN</li>
+</ol>
+<p><img src="Dihedral-angles-in-glutamate-Dihedral-angles-are-the-main-degrees-of-freedom-for-the%202%201.jpeg" alt="Dihedral-angles-in-glutamate-Dihedral-angles-are-the-main-degrees-of-freedom-for-the 2 1.jpeg" /><br>
+Source: <a href="https://www.researchgate.net/figure/Dihedral-angles-in-glutamate-Dihedral-angles-are-the-main-degrees-of-freedom-for-the_fig4_44651362" target="_blank" rel="noopener noreferrer">https://www.researchgate.net/figure/Dihedral-angles-in-glutamate-Dihedral-angles-are-the-main-degrees-of-freedom-for-the_fig4_44651362</a></p>
+<ol start="2">
+<li>The (Sec)ondary(Struct)ure (SS) profile, often derived from the AA sequence. SS is generated by running PSIPRED or similar on the sequence (likely computed from coordinates in AF1, though), then outputs a probability of each position being a H(helix: spiral)/E(strand)/C(coil: strand but unstructured form).</li>
+<li>SASA: The actual amount of surface area of each residue exposed to the surrounding solvent. This helped the model learn about hydrophobic core formation, along with loop regions.</li>
+<li>Inter-residue distances (Distograms): They are the distances between two residues (AAs). Here, we compare the distance between each AA and another in the SAME PROTEIN at the 3D space. They&rsquo;re often categorized by bins as will be mentioned in the <a href="#engineering">Engineering</a>. You can say that we derive the XYZ features (target!), but the loss was on the feature space.</li>
+</ol>
+<p>Example illustration between five amino acids in the same protein:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>    M    S    V    T    Q 
+</span></span><span style="display:flex;"><span>M  0    3.8   7.2  12.1  15.3 
+</span></span><span style="display:flex;"><span>S  3.8   0    4.1   8.9  14.2 
+</span></span><span style="display:flex;"><span>V  7.2   4.1   0   5.3   10.1 
+</span></span><span style="display:flex;"><span>T  12.1  8.9   5.3   0    4.8 
+</span></span><span style="display:flex;"><span>Q  15.3  14.2  10.1 4.8   0
+</span></span></code></pre></div><p>So they&rsquo;re distances between pairs of AminoAcids. You can see that the distance between AA &ldquo;<code>M</code>&rdquo; and itself is zero (similar to the distance between you and yourself), while other pairs facing the same pattern. There is also a pattern hinted by a diagonal line.</p>
+<blockquote>
+<p>&ldquo;What can the NN conclude?!&rdquo;</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>Close residues (3-4 Å) then a match in helix shapes
+</span></span><span style="display:flex;"><span>Variable distances then susceptible loops
+</span></span><span style="display:flex;"><span>Far apart in sequence but close in space then a possible folding interaction
+</span></span></code></pre></div><p>You can optionally switch them to Binary Contact Maps when hit a range:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>1 = if distance is below 8Ang.
+</span></span><span style="display:flex;"><span>0 = Above 8Ang.
+</span></span></code></pre></div><p>Example Illustration of Binary Contact Maps:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>    M S V T Q   
+</span></span><span style="display:flex;"><span>M   0 1 0 0 0   
+</span></span><span style="display:flex;"><span>S   1 0 1 0 0  
+</span></span><span style="display:flex;"><span>V   0 1 0 1 0   
+</span></span><span style="display:flex;"><span>T   0 0 1 0 1   
+</span></span><span style="display:flex;"><span>Q   0 0 0 1 0
+</span></span></code></pre></div><p>So if we think about outputting the 3D structure itself, we hit a roadblock that our NN cannot distinguish from easily. [That was not yet clarified by myself!]</p>
+<p>These auxiliary losses aid the NN to learn, <strong>but remember, we don&rsquo;t specifically output them, nor do we specifically input them to the NN itself!</strong> Alphafold 1 explicitly had Torsion angles and Distograms as outputs. For the auxiliary losses, use these as additional training signal during training with a very marginal weight provided (not affecting the outputs as much as other loss functions like Distance Matrices and the Angle Matrices)</p>
+<p>The intuition here is that even though some these data points were not explicitly defined in the <a href="#pdb">PDB</a>, they were nonetheless used as supplementary data to help the algorithm MODEL the data better.</p>
+<h3 id="outputs">Outputs:</h3>
+<blockquote>
+<p>Note: AlphaFold 1 produced several outputs that described the proteins conformation in a 2D, pairwise representation which are essentially structural features and local geometry information.</p>
+</blockquote>
+<h4 id="stage-one">Stage one</h4>
+<p>&hellip;are the two targets mentioned: an Angle matrix and a Distance map. Then OPTIONALLY, the SS are derived from those distance maps themselves using other algorithms like DSSP to assign H/E/C by analyzing angles of the distance maps (which is AFTER the prediction of the NN). If we wanted to know and predict the SS before the model outputs a 3D structure, we use the AA sequence and ingest it to a &ldquo;PSIPRED&rdquo; or a &ldquo;S4PRED&rdquo; to get a prediction. Whichever fits the speed/accuracy goal respectively.</p>
+<p>Insight: Subsampling and templates, varying random seeds to the MSA to output multiple proteins and conformations (black-box as salt alternative). If you needed uncertainty quantification//constraints beyond just distances (angle and excluded volumes) or maybe you have a noisy or incomplete distance map(s). Modifying the MSA itself seems core. There are potentials of having an NN here, too.</p>
+<h4 id="stage-two">Stage two</h4>
+<p>Then we take both outputs (Distance and Angle Matrices), by constructing the full 3D atomic coordinates using either options:</p>
+<ol>
+<li>Pure Maths (MDS or similar tools) without learning.</li>
+<li>A blend of physics and mathematics: which is different from a traditional energy function, as it directly learns from data and principles from physics (Van der Waals forces, and all the other interactions covalent and non-covalent interactions taken into account as constraints), instead of using a less-sophisticated method like MDS. This ensured that the resulting structure was physically realistic, too, also is the approach used by AF1!</li>
+</ol>
+<p>For the physicists:<br>
+There are no pure quantum-level physics involved, as the energy function is semi-empirical (derived from known structures) using classical force fields and such. They&rsquo;re learned patterns from real protein structures, with a blend of classical mechanics approximations.</p>
+<h4 id="stage-three-optional">Stage three (Optional)</h4>
+<p>After the converging of the gradient descent on stage 2, using a classical physics simulation to slightly adjust the structure. Removing minor clashes and optimizing local geometry along with other many optimizations. The difference between this stage and the second stage is that this is more fine-grained polishing (very fine touches) while the former second stage is more coarse and a global optimization of the fold. At the third stage, we use the best structure outputted from the previous stage and apply cycles of energy minimization and repacking.</p>
+<h4 id="attraction-and-repulsion-size-and-mutations">Attraction and repulsion, size, and mutations:</h4>
+<h2 id="to-be-cleaned-up-after-building-up-the-smallest-to-the-biggest-protein-component-for-intuition-and-bigger-picture">TO BE CLEANED UP AFTER [Building up the smallest to the biggest protein component <a href="#building-up-the-smallest-to-the-biggest-protein-component-for-intuition-and-bigger-picture">For intuition and bigger picture</a>]</h2>
+<p>There are things called attraction forces coming from salt bridges, we need positive and negative charges together so the entire protein can be stable. So as long as we have that charge balance, everything can become stable.</p>
+<p>Imagine for a second: Two proteins touching each other:<br>
+<code>MKTAYIAKQ(K)PGLV ... YKV(E)SFIKQ</code></p>
+<p><code>K:</code> AA no. 10 which is positively charged<br>
+<code>E:</code> AA no. 50 which is negatively charged</p>
+<p>So if we had AA on position 10 of a protein K, we can safely get another AA with the same charge in it&rsquo;s place, like &lsquo;R&rsquo; , which are both positive (which is also called a conservative mutation).</p>
+<p>Or else, if that occurs where repulsion meets where there should be attraction (If it were an AA of <code>A</code>, which is neutral); The protein misfolds, aggregates and maybe loses its function (No, there is no zombie behaviour for Halloween in such cases!)&hellip;</p>
+<h4 id="disease-prediction">Disease prediction:</h4>
+<p>[personalized medicne]</p>
+<p>There are three disease mechanisms (Roughly):</p>
+<ol>
+<li>Loss-of-function</li>
+<li>Gain-of-Function</li>
+<li>Dominant-Negative</li>
+</ol>
+<p>The percentages are subjectively approximated, but conveys the meaning nonetheless</p>
+<p>There are possibilities when proteins do not fold as intended, either due to size mismatches or wrong charges; Maybe due to the energy landscape changing as a result of a different environment or maybe due to a protein that cannot escape a kinetic trap, as in being in wrong conditions and no chaperones or maybe proteasomes which are quality control (cell level).</p>
+<p>The percentage of diseases coming from Gain-of-Function (GOF), when the protein works too well or does something new and bad) are approximately (24%) of all diseases, while Loss-of-function (LOF), when the protein breaks, are accountable for up to 52% of diseases.</p>
+<p>Keep in mind that (AR) mutations occur at the protein interiors (58%), while only (15%) are in the protein&rsquo;s surface. These are also at the LOF mutations.</p>
+<p>Some of which can trigger certain diseases where mutant proteins sometimes gain zombie-like behaviour called Dominant-Negative (DN) (That&rsquo;s the Halloween spirit!) and unfortunately, most of these mutations are that of serious diseases; some are: cancers and seizures (GOF). Others are: the Prion disease, some Huntington&rsquo;s diseases // Hemophilia // Cystic fibrosis (LOF) and other such protein-based issues like (DN) whereas it is a contagious mutation causing HMT, Myocilin and some collagen diseases.</p>
+<p>So that we got this out of the way, maybe we start thinking using these as an anchor point. Say, a &ldquo;ΔΔG&rdquo; to measure a folded protein&rsquo;s stability (i.e: How easily it unfolds and cause trouble) basically a measure of destabilization and such after the protein has folded. Any unstable protein has the potential to unfold, and getts degrades, may also be potential for a LOF mutation.</p>
+<p>Now this ΔΔG is also called the change in free energy between two states:</p>
+<p><code>ΔΔG = ΔG(mutant) NOT normal - ΔG(wild-type) NORMAL</code></p>
+<p>Meaning that ΔΔG (folding) is for stability! But a crucial point to make here is that ΔΔG can be also a binding (interaction). The former (stability) is done after the protein has folded and measures how stable it is, Example:</p>
+<p><strong>Interpretation:</strong></p>
+<ul>
+<li>ΔΔG &gt; +1.0 kcal/mol: Mutation destabilizes → protein misfolds or unfolds more easily</li>
+<li>ΔΔG &lt; -1.0 kcal/mol: Mutation stabilizes → protein is harder to unfold (often GOF signal)</li>
+</ul>
+<p>The latter ΔΔG (binding) is done also after the protein folding process, but when interacting with something else. So it answers: &ldquo;Does this mutation weaken or strengthen the protein-protein interaction?&rdquo;. Example:</p>
+<p><strong>Interpretation:</strong></p>
+<ul>
+<li>ΔΔG &gt; +1.0 kcal/mol: Mutation weakens interaction → potential GOF or LOF depending on context</li>
+<li>ΔΔG &lt; -1.0 kcal/mol: Mutation strengthens interaction → GOF signal (binds too well to wrong partner)</li>
+</ul>
+<p>Important misconception: When calculating both ΔΔG&rsquo;s, we&rsquo;re always working with the folded structure (unless your creativity says otherwise). But we&rsquo;re predicting how stable is the final folded state. (Remember? Proteins don&rsquo;t fold once and that&rsquo;s it!)</p>
+<p>Now, how much would it take for a mutant to stay in the native state? Or in other words, how much MORE destabilized is the mutant? So the higher the ΔΔG, the more easy it unfolds, the lower it is, the more it resists unfolding (which open up possibilities of GOF).</p>
+<p>So, to sum it up, ΔΔG (folding) doesn&rsquo;t predict &ldquo;folding.&rdquo; It predicts &ldquo;unfolding.&rdquo;</p>
+<p>Architecture wise, there are some already on the shelf computing ΔΔG!</p>
+<ol>
+<li>FoldX and</li>
+<li>Rosetta,</li>
+<li>and maybe a latest RaSP</li>
+</ol>
+<p>An output may look similar to this (A layered production pipeline, just for demonstration!):</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>STRUCTURAL ANALYSIS:
+</span></span><span style="display:flex;"><span>- ΔΔG Folding Stability: +2.3 kcal/mol (DESTABILIZING) 
+</span></span><span style="display:flex;"><span>- Position Location: Buried interior (80% burial) 
+</span></span><span style="display:flex;"><span>- Distance to interface: 12.4 Å (isolated) 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>RECOMMENDATION: 
+</span></span><span style="display:flex;"><span>- Likely pathogenic (LOF mechanism) 
+</span></span><span style="display:flex;"><span>- Experimental validation: Thermal stability assay 
+</span></span><span style="display:flex;"><span>- Cellular: Check protein expression levels
+</span></span></code></pre></div><p>Anyways, being aware of the limitations of our current architectures and available tools is crucial, as we need several factors that are deeper than intuition-level:</p>
+<ul>
+<li>aggregation propensity (Forming plaques similar to certain diseases),</li>
+<li>cellular trafficking (Stuck in ER. Used as a DN signal),</li>
+<li>dynamic properties (Flexibility changing and such),</li>
+<li>binding kinetics (How fast does it unbind)</li>
+<li>cofactor dependence (Metal coordination and its loss)</li>
+</ul>
+<p>So they don&rsquo;t explain which forces are broken and such other things. We can take a scenario where it fails to forecast a mutation type:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>Scenario: Mutation has ΔΔG = +1.5 kcal/mol (destabilizing)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>FoldX says: &#34;This is destabilizing, probably LOF&#34;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>But actually:
+</span></span><span style="display:flex;"><span>- IF it breaks a salt bridge in interior then LOF!
+</span></span><span style="display:flex;"><span>- IF it breaks hydrophobic core indicates aggregation (Alzheimer&#39;s-like)
+</span></span><span style="display:flex;"><span>  and more...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Same ΔΔG, different diseases!
+</span></span></code></pre></div><p>Maybe we need a layering advice: Energy calculations, interface analysis, mechanism-specific logic all on top of the structure that we get from PDB or our model&hellip; all increasing complexity but that&rsquo;s a potential right there to optimize and hopefully find a better approach. This part feels a bit underdeveloped, though. My condolences</p>
+<p>We delved too much on insights and other introductory parts, but the intuition shall be enough to continue with the implementation of the algorithm itself. This requires basic familiarity, but nothing will pass unquestioned that I myself have even questioned. We&rsquo;ll zoom in, zoom out, keep seeing both pictures and identify the optimal practices for both Python and Machine learning.</p>
+<h2 id="engineering">Engineering</h2>
+<h3 id="dataset-and-preparation-80">Dataset and preparation ~80%</h3>
+<h4 id="note-on-msa-databases">Note on MSA databases:</h4>
+<p>UniProt is a comprehensive protein sequence and annotation DB, containing millions of them. All the other databases point to it! But if we use UniRef, we can reference clusters at which the sequences are either 100%//or 90% or 50% the same in identity of the target sequence. The purpose as to reduce the database size probably to find more <a href="#remote-or-distant-homologs">Remote or distant homologs</a> as we get less-similar sequences. Uniclust, however, goes deeper than 50% match.</p>
+<p>In AF1 case, we are still unsure what and which database they used. Which is why were going to stick with the most likely clustered versions (Uniref90 or 50 at that time). Although for AF2, it was confirmed that they used Uniclust 30 along with the Uniref90 and implicitly Uniref50 using BFD databases.</p>
+<p>Another note, specifically for HHblits and Jackhmmr: There are speculations that they may have used HHblits and HMMER tools (not explicitly defined) simultaneously, but it is confirmed to have been utilized that way in AF2, not AF1.</p>
+<h3 id="inputs">Inputs:</h3>
+<ol>
+<li>
+<p>AA sequences</p>
+</li>
+<li>
+<p>MSA: Using external databases, we search for MSA&rsquo;s using the Uniclust30 and BDF (using HHblits) /Uniref90 and MGnify databases (using JackHMMR). We also use along with PSI-blast to summarize the signal (probability of each AA at each single position). MSA : Generated!</p>
+<p>Now, feeding the raw MSA directly to the NN (AF2 used the &ldquo;Evoformer&rdquo; module here, more about it later). Now that it learns the patterns and recognizing the subtle, complex co-variations (MSA purpose) that correlate with physical contact in a 3D structure.</p>
+</li>
+</ol>
+<blockquote>
+<p>A Potts model was the traditional way of calculating the co-evolutionary signals. It used the traditional methodology of pseudolikelihood maximization to calculate evolutionary signals (inferring direct AA contacts from raw MSAs). Now, the NN does just that without it.</p>
+</blockquote>
+<p>This, as an input, can be a bottleneck in runtime and we should have error handling incase there are no homologs present. The lower quality MSA we have the lesser accurate the model may be. Although some algorithms have completely removed this component with slightly diminished accuracy</p>
+<h3 id="targets">Targets:</h3>
+<ol>
+<li>Distance maps: A distance distribution of 64 bins.</li>
+<li>Angles: Psi and Phi Torsion angles</li>
+<li>Auxiliary loss:</li>
+</ol>
+<h3 id="output">Output</h3>
+<p>Stage one: Distance maps and angle torsions</p>
+<p>Stage two: Using guided minimization, which is an algorithm (specifically a version of gradient descent: L-BFGS algorithm), that used this potential surface as guidance to fold the protein and find the lowest &ldquo;energy&rdquo;, outputting a 3D structure. In other words, this stage optimizes the backbone Cα positions (X - Y - Z) to satisfy the distance predictions when training. Three processes occur here:</p>
+<ol>
+<li>Multiple starting points, implying that the algorithm was run multiple times with different 3D configurations of the protein (all random). This explores a wide range of possible folds (related to the previous insight?!) then it performs an</li>
+<li>Iterative minimization, adjusting the AA positions to get the most steeply decreased potential function (basically epochs for you ML engineers), and finally</li>
+<li>We choose the best candidates after converging. They are the lowest-energy structure from multiple starting runs implied on the first step of this algorithm.</li>
+</ol>
+<p>Stage three: Optional refinement using Rosetta REF15 energy function.</p>
+<h3></h3>
+<h2 id="nn-architecture-20">NN architecture ~20%</h2>
+<p>We first create a Class that inherits the nn.module (so we can do all of its powers like <code>.train() </code> and <code>.eval()</code>, and many others mentioned in the documentation <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html" target="_blank" rel="noopener noreferrer">here</a></p>
+<h2 id="fitting-to-the-problem-statement">Fitting to <a href="#the-problem-statement">The Problem Statement</a></h2>
+<p>We already clarified the reason for approaching the problem using distance maps between AA&rsquo;s and another, plus clarified the issues if we were to approach the problem like predicting the entire protein [P1] in a 3D representation right away from the output [P2].</p>
+<p>In protein distance prediction, we do distance bins classification (grouping predictions and settling for &ldquo;Good Enough&rdquo; instead of regression. So, we predict the not the exact distances, but an approximation of them:</p>
+<p>0.1A 0.2A 0.3A bins and so on till 8A; because contacts matter in proteins<br>
+Then after they get far enough, the bins become more coarse 8A, 9A etc till we reach the 20 angstorm threshold for a &ldquo;functionality irrelevant&rdquo; state between AA&rsquo;s.</p>
+<p>So not only are we predicting distances that are &ldquo;close enough &quot;<br>
+(Bins), we also do not produce a 3D output predicting the exact protein shape, but were outputting a distance map between each two AA&rsquo;s.</p>
+<h2 id="embeddings">Embeddings</h2>
+<p>We then create an embedding layer, which basically serves as our &ldquo;means&rdquo; [*demonstration] ,</p>
+<ol>
+<li>So we give the embedding space an index (AA)</li>
+<li>We give it the index we DO NOT want to update (like padding idx which is index(20) in our VOCAB). If we remove this part, we&rsquo;d be training the padding tokens and the model would think there are patterns in such cases:</li>
+</ol>
+<p>But here&rsquo;s the catch: Maybe one lesser protein still has potential in making useful pattern, in such case we&rsquo;d basically be adding a &ldquo;feature&rdquo;, not a &ldquo;bug&rdquo; in our training. For example: adding soft masking with learned embedding; we provide the padding with a learnable identity (i.e not shouting &ldquo;ignore me!!&rdquo;, but represents a &ldquo;no amino acid&rdquo; index).</p>
+<p>Back at the embedding space, we had created ONE embedding for EACH AA. One way to ensure the model has enough &ldquo;learning capacity&rdquo; is by introducing more embedding dimensions. So we create a 64 dimensional embedding space for EACH amino acid.</p>
+<p>So if we had 2 proteins, max length (between them) is 8 AA&rsquo;s:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>[[<span style="color:#099">0</span>, <span style="color:#099">1</span>, <span style="color:#099">2</span>, <span style="color:#099">3</span>, <span style="color:#099">4</span>, <span style="color:#099">20</span>, <span style="color:#099">20</span>, <span style="color:#099">20</span>], <span style="color:#aaa;font-style:italic">#Take note of the first zero on protein 1</span>
+</span></span><span style="display:flex;"><span>  [<span style="color:#099">0</span>, <span style="color:#099">1</span>, <span style="color:#099">2</span>, <span style="color:#099">3</span>, <span style="color:#099">4</span>,  <span style="color:#099">5</span>,  <span style="color:#099">6</span>,  <span style="color:#099">7</span>]] 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># batch_size = 2</span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># seq_len = 8</span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Their shape is (2 , 8)</span>
+</span></span></code></pre></div><p>Then the forward pass of the embedding layer:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>embedding.weight[<span style="color:#099">0</span>, :] = [<span style="color:#099">0.23</span>, -<span style="color:#099">0.45</span>, ..., <span style="color:#099">0.67</span>]  <span style="color:#aaa;font-style:italic"># 64 numbers for amino acid A, which is the zero index protein one. </span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Shape has become (2, 8, 64)</span>
+</span></span></code></pre></div><h3 id="masks">Masks</h3>
+<p>Now, we apply the masks to identify which lookup tables (embeddings) should be trained. In this notebook, we go with hard masking as mentioned before. But to those curious to apply soft masking (learnable identity), it&rsquo;d go somewhere along the following lines:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>self.pad_embedding = nn.Parameter(torch.zeros(embed_dim))
+</span></span><span style="display:flex;"><span># embeddings = torch.where(
+</span></span><span style="display:flex;"><span>#     masks.unsqueeze(-1).bool(),
+</span></span><span style="display:flex;"><span>#     embeddings,
+</span></span><span style="display:flex;"><span>#     self.pad_embedding
+</span></span></code></pre></div><p>Hard masking, however, is applied by multiplying (zeroing) the padding tokens by zero and all the other values multiplied by zero, which are actual AA&rsquo;s, so the model ignores these values because their weights are zero.</p>
+<h3 id="pairwise">Pairwise</h3>
+<p>We need to create pairwise (the relationship between AA0 AA1) relationships&hellip;. since we&rsquo;re comparing two AAs locations using &ldquo;euclidean distance&rdquo; (Pythagoras but 3D instead of 2D) as mentioned before, and each embedding is 64 dimemions.</p>
+<p>Maybe this will stick:</p>
+<p>In 1D sequence: [AA0, AA1, AA2], AA0 and AA2 are only two positions farther away from each other  0 - 2 = 2 positions.<br>
+BUT, in 3D space (our life but minus the &ldquo;time&rdquo; dimension), maybe they&rsquo;re neighbors. We avoided outputting 3D maps directly because of the confusion in the neural network [ * need more possibilities], so we proposed the pairwise idea of 2D dimensions.</p>
+<p>It goes by first adding dimensions to our first &ldquo;General embedding&rdquo;: <code>emb_i</code> by using <code>. unsqueeze(zeroindexed) </code> to add rows for each AA.</p>
+<p>First, let&rsquo;s see a sample data:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#099">1</span> protein, <span style="color:#099">3</span> amino acids, <span style="color:#099">2</span>-dim embeddings (<span style="color:#00a">for</span> visualization)
+</span></span><span style="display:flex;"><span>batch_size = <span style="color:#099">1</span>
+</span></span><span style="display:flex;"><span>seq_len = <span style="color:#099">3</span> <span style="color:#aaa;font-style:italic"># Our AA&#39;s</span>
+</span></span><span style="display:flex;"><span>embed_dim = <span style="color:#099">2</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># &#34;General embedding&#34; </span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>embeddings = tensor([
+</span></span><span style="display:flex;"><span>    [[<span style="color:#099">0.1</span>, <span style="color:#099">0.2</span>],   <span style="color:#aaa;font-style:italic"># AA0 embedding</span>
+</span></span><span style="display:flex;"><span>     [<span style="color:#099">0.3</span>, <span style="color:#099">0.4</span>],   <span style="color:#aaa;font-style:italic"># AA1 embedding</span>
+</span></span><span style="display:flex;"><span>     [<span style="color:#099">0.5</span>, <span style="color:#099">0.6</span>]]   <span style="color:#aaa;font-style:italic"># AA2 embedding</span>
+</span></span><span style="display:flex;"><span>])
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#aaa;font-style:italic"># Shape: (1, 3, 2)</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>emb_i = embeddings.unsqueeze(<span style="color:#099">2</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>emb_i = [[[<span style="color:#099">0.1</span>, <span style="color:#099">0.2</span>]([[<span style="color:#099">0.1</span>, <span style="color:#099">0.2</span>),   <span style="color:#aaa;font-style:italic"># AA0</span>
+</span></span><span style="display:flex;"><span>          [<span style="color:#099">0.3</span>, <span style="color:#099">0.4</span>](<span style="color:#099">0.3</span>, <span style="color:#099">0.4</span>),   <span style="color:#aaa;font-style:italic"># AA1</span>
+</span></span><span style="display:flex;"><span>          [<span style="color:#099">0.5</span>, <span style="color:#099">0.6</span>](<span style="color:#099">0.5</span>, <span style="color:#099">0.6</span>)]]  <span style="color:#aaa;font-style:italic"># AA2, and yes, they only have one bracket extra. </span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Original: [AA0, AA1, AA2]</span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># (1, 3, 2)</span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># After:    [[AA0], [AA1], [AA2]]  Each AA in its own &#34;row&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic">#(1, 3, 1, 2)</span>
+</span></span></code></pre></div><p>Then, with another embedding, calling it <code>emb_j</code>.</p>
+<h4 id="why-two-embeddings">Why two embeddings?</h4>
+<p>To achieve pairwise relationships. Yes, this is how we do it.</p>
+<p>So, the PAIRWISE embeddings should exist by adding an embedding of an AA with with another called <code>concat'ing</code></p>
+<p>In other words, If we had a 64 dimensional embedding for each AA, it&rsquo;d be a 128 dimensional PAIRWISE embedding.</p>
+<p>So we gt emb_j, our other pair to be concatted with the other embedding emb_i using our &ldquo;General embedding&rdquo;.</p>
+<p>To get emb_j, we add another dimension so all AA&rsquo;s can be together rather than each to be in one row</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Our &#34;General embedding&#34;</span>
+</span></span><span style="display:flex;"><span>embeddings = [[[<span style="color:#099">0.1</span>, <span style="color:#099">0.2</span>],
+</span></span><span style="display:flex;"><span>               [<span style="color:#099">0.3</span>, <span style="color:#099">0.4</span>],
+</span></span><span style="display:flex;"><span>               [<span style="color:#099">0.5</span>, <span style="color:#099">0.6</span>]]]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Original: [AA0, AA1, AA2]</span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Shape: (1, 3, 2)</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>emb_j = embeddings.unsqueeze(<span style="color:#099">1</span>) <span style="color:#aaa;font-style:italic"># Here it is</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>emb_j = [[[[<span style="color:#099">0.1</span>, <span style="color:#099">0.2</span>],   <span style="color:#aaa;font-style:italic"># All AAs in one &#34;row&#34; now</span>
+</span></span><span style="display:flex;"><span>           [<span style="color:#099">0.3</span>, <span style="color:#099">0.4</span>],
+</span></span><span style="display:flex;"><span>           [<span style="color:#099">0.5</span>, <span style="color:#099">0.6</span>]]]]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># After:    [AA0, AA1, AA2](AA0, AA1, AA2)   All AAs together</span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Shape: (1, 1, 3, 2)  Added dimension at position 1</span>
+</span></span></code></pre></div><p>Then we <code>.expand</code> and enter a Python confusion point out of the range of the intuition required to understand AlphaFold 1.</p>
+<p><code>emb_i = emb_i.expand(-1, -1, seq_len, -1)</code></p>
+<p>We repeat the last column three times (our<code> seq_length</code> which is AA count);</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>emb_i = [[[[<span style="color:#099">0.1</span>, <span style="color:#099">0.2</span>],   <span style="color:#aaa;font-style:italic"># Focus on this</span>
+</span></span><span style="display:flex;"><span>           [<span style="color:#099">0.3</span>, <span style="color:#099">0.4</span>],
+</span></span><span style="display:flex;"><span>           [<span style="color:#099">0.5</span>, <span style="color:#099">0.6</span>]]]]
+</span></span></code></pre></div><p>We repeat 0.1, 0.2 by duplicating them to other columns to the right:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>[[<span style="color:#099">0.1</span>, <span style="color:#099">0.2</span>], [<span style="color:#099">0.1</span>, <span style="color:#099">0.2</span>], [<span style="color:#099">0.1</span>, <span style="color:#099">0.2</span>]],  <span style="color:#aaa;font-style:italic"># Row 0: AA0</span>
+</span></span></code></pre></div><p>The same for the other AA&rsquo;s:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>[[0.3, 0.4], [0.3, 0.4], [0.3, 0.4]],  # Row 1: AA1 repeated 3 times
+</span></span><span style="display:flex;"><span>[[0.5, 0.6], [0.5, 0.6], [0.5, 0.6]]   # Row 2: AA2 repeated 3 times
+</span></span></code></pre></div><p>Which end up looking like:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>      Col0        Col1           Col2
+</span></span><span style="display:flex;"><span>Row0: [AA0]     [AA0]      [AA0]
+</span></span><span style="display:flex;"><span>Row1: [AA1]     [AA1]      [AA1]
+</span></span><span style="display:flex;"><span>Row2: [AA2]     [AA2]      [AA2]
+</span></span></code></pre></div><p>Now emb_j:</p>
+<p><code>emb_j = emb_j.expand(-1, seq_len, -1, -1)</code></p>
+<p>Which is done by repeating the rows, not the columns</p>
+<p>Visual interpretation:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Col0 Col1 Col2 </span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Row0: [AA0] [AA1] [AA2] </span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Row1: [AA0] [AA1] [AA2] </span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Row2: [AA0] [AA1] [AA2]</span>
+</span></span></code></pre></div><p>What does each cell contain?</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Position (row=0, col=0):</span>
+</span></span><span style="display:flex;"><span>emb_i[<span style="color:#099">0</span>, <span style="color:#099">0</span>, <span style="color:#099">0</span>, :] = [<span style="color:#099">0.1</span>, <span style="color:#099">0.2</span>] <span style="color:#aaa;font-style:italic"># AA0</span>
+</span></span><span style="display:flex;"><span>emb_j[<span style="color:#099">0</span>, <span style="color:#099">0</span>, <span style="color:#099">0</span>, :] = [<span style="color:#099">0.1</span>, <span style="color:#099">0.2</span>] <span style="color:#aaa;font-style:italic"># AA0 # So, (AA0, AA0) pairs...</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Position (row=0, col=1):</span>
+</span></span><span style="display:flex;"><span>emb_i[<span style="color:#099">0</span>, <span style="color:#099">0</span>, <span style="color:#099">1</span>, :] = [<span style="color:#099">0.1</span>, <span style="color:#099">0.2</span>] <span style="color:#aaa;font-style:italic"># AA0</span>
+</span></span><span style="display:flex;"><span>emb_j[<span style="color:#099">0</span>, <span style="color:#099">0</span>, <span style="color:#099">1</span>, :] = [<span style="color:#099">0.3</span>, <span style="color:#099">0.4</span>] <span style="color:#aaa;font-style:italic"># AA1 # So, (AA0, AA1) pairs... etc</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Position (row=0, col=2):</span>
+</span></span><span style="display:flex;"><span>emb_i[<span style="color:#099">0</span>, <span style="color:#099">0</span>, <span style="color:#099">2</span>, :] = [<span style="color:#099">0.1</span>, <span style="color:#099">0.2</span>] <span style="color:#aaa;font-style:italic"># AA0</span>
+</span></span><span style="display:flex;"><span>emb_j[<span style="color:#099">0</span>, <span style="color:#099">0</span>, <span style="color:#099">2</span>, :] = [<span style="color:#099">0.5</span>, <span style="color:#099">0.6</span>] <span style="color:#aaa;font-style:italic"># AA2 # So, (AA0, AA2)</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#aaa;font-style:italic"># Position (row=1, col=0):</span>
+</span></span><span style="display:flex;"><span>emb_i[<span style="color:#099">0</span>, <span style="color:#099">1</span>, <span style="color:#099">0</span>, :] = [<span style="color:#099">0.3</span>, <span style="color:#099">0.4</span>] <span style="color:#aaa;font-style:italic"># AA1 </span>
+</span></span><span style="display:flex;"><span>emb_j[<span style="color:#099">0</span>, <span style="color:#099">1</span>, <span style="color:#099">0</span>, :] = [<span style="color:#099">0.1</span>, <span style="color:#099">0.2</span>] <span style="color:#aaa;font-style:italic"># AA0 So, (AA1, AA0)</span>
+</span></span></code></pre></div><p>Let&rsquo;s concat both embeddings <code>emb_i</code> with <code>emb_j</code> each cell contains 4 dimensional vectors (2 for each AA)</p>
+<p>Now, one may propose that we have used a different concat technique, touching on feature engineering, which is called asymmetric (where it captures direction) and symmetric order (doesn&rsquo;t matter) decomposition:</p>
+<p>Symmetric + Antisymmetric decomposition</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>sym = emb_i + emb_j <span style="color:#aaa;font-style:italic"># Symmetric</span>
+</span></span><span style="display:flex;"><span>antisym = emb_i - emb_j <span style="color:#aaa;font-style:italic"># Antisymmetric</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>Then concat them:
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>pair_features = torch.cat([sym, antisym, emb_i * emb_j], dim=-<span style="color:#099">1</span>)
+</span></span></code></pre></div><p>Or maybe leverage the  &ldquo;sequence separation&rdquo; technique, in which I have no expertise on.</p>
+<p>Now we use convolutional layers. These are &ldquo;kernels&rdquo; that perform computation based on[ * ] and slide [ * ]. Note that we need reshaping to BCHW.</p>
+<p>This is a WEIGHTED SUM of all input channels<br>
+Each output channel learns different &ldquo;combinations&rdquo; of input features. Then we add <a href="non-linearities">non-linearities</a>, in our case is a RELU activation function. This gives us depth which the problem statement deserves (Unless:</p>
+<ol>
+<li>There are scaling techniques incorporated (more layers compensating for the lack of depth, etc&hellip;)</li>
+<li>There will be a more simple algorithm (preferably comparable performance to that of the bigger AF1/2 we have now) in the future other, but that&rsquo;s for another topic</li>
+</ol>
+<p>Now, this is my favorite second-trick:<br>
+Remember that we had pairwise relationships? That indirectly holds us capable of sliding a window across these pairs! They truly look like boxes that can be slid over once you think about that..</p>
+<p>but apparently the purpose of CONV2D was diminished after we did <code>kernel = 1</code>, which makes us unable to render neighbors and see the relationships of pairs.</p>
+<p>Then we add residual blocks, so the gradient can flow backwards in larger architectures.<br>
+Also to have padding ON for convnets, because having same shapes is a necessary design choice (but not strictly) for the residual connection to work.</p>
+<p>After passing  through the network&rsquo;s head, it outputs 37 logits as bin ranges output that we later convert with softmax</p>
+<p>Then we initialize specific parts of the network as demonstrated here, by simply looping on the list of modules that we have (Architecture components like CONV/). This aids in deep NN architecture or if we needed to scale.</p>
+<h2 id="inference-and-recap-to-be-refined">Inference and recap (To be refined)</h2>
+<p>Given a novel, non-seen-before protein sequence: <code>MSVTQRFIAKQ</code>(1)<br>
+We generate a MSA (2) using an external DB (HHblits), then generate a PSI-blast profile. Then, after the output of the distance map from the NN, using the distance map, Then use MDS or similar tool to construct a 3D, folded protein. We optionally can compute the Angle Matrices using DSSP analysis to label H/E/C on the SS per AA.</p>
+<p>Therefore, we ingest (1), (2) and (3) to the model, with it predicting without &ldquo;improving&rdquo; thus not using Cα coordinates (unless we specifically add TrainingTestTime functionality), because we&rsquo;re inferencing after all. No gradients, weight updates, activations.</p>
+<p>Note that AF1 is far away from being an E2E architecture, because of the external MSA generation and requiring GradientDecsent (GD) optimization rather than directly predicting coordinates.</p>
+<p>[Continue]</p>
+<h2 id="to-be-added">To be added:</h2>
+<ul>
+<li>Doodles on the images themselves (studying purposes obviously)</li>
+<li>Instances of outer scope interdisciplinary knowledge are to be integrated when needed (should serve as fun &ldquo;tips&rdquo; for your physical and mental life as well)</li>
+<li>All the &ldquo;continue&rdquo;&rsquo;s either visibile or not</li>
+<li>Linking factual information and separating it from speculative theory</li>
+<li>Including the original paper in attempt of paper replication, not truly word-for-word but close enough</li>
+<li>Align the topics to their respective headings. Some are scattered!</li>
+<li>Many other images for demonstration and illustration. Maybe a self-made GIF to clear up both the bigger and smaller pictures. Heavy intermediate factors may be distracting!</li>
+<li>Foldit competition and more relevant documentation are WIP along with RL enhancement</li>
+</ul>
+<p>Important links:</p>
+<p>Citation:</p>
+<p><strong>John Jumper, et al. (2018). <em>AlphaFold: A Protein Structure Prediction System</em>. The abstract book of the 13th Critical Assessment of Techniques for Protein Structure Prediction (CASP13).</strong></p>
+<p>Varadi, M. et al. &ldquo;AlphaFold Protein Structure Database in 2024: Providing structure coverage for over 214 million protein sequences.&rdquo; <em>Nucleic Acids Research</em> gkad1011 (2023). DOI: 10.1093/nar/gkad1011.</p>
+<p>Zhang G, Liu C, Lu J, Zhang S, Zhu L. The Role of AI-Driven De Novo Protein Design in the Exploration of the Protein Functional Universe. Biology (Basel). 2025 Sep 15;14(9):1268. doi: 10.3390/biology14091268. PMID: 41007412; PMCID: PMC12467925.</p>
+<p>Senior, A.W., Evans, R., Jumper, J. et al. &ldquo;Improved protein structure prediction using potentials from deep learning.&rdquo; <em>Nature</em> 577, 706–710 (2020).</p>
+<p><strong>Jumper, J. et al. &ldquo;Highly accurate protein structure prediction with AlphaFold.&rdquo; <em>Nature</em> 596, 583–589 (2021). DOI: 10.1038/s41586-021-03819-2</strong></p>
+<p>Abramson, J., Adler, J., Dunger, J. et al. Accurate structure prediction of biomolecular interactions with AlphaFold 3. <em>Nature</em> <strong>630</strong>, 493–500 (2024).</p>
+<p>Interesting for later:</p>
+<p><a href="http://fhalab.caltech.edu/?page_id=171#page-content" target="_blank" rel="noopener noreferrer">http://fhalab.caltech.edu/?page_id=171#page-content</a></p>
+<p>Others:</p>
+<p><a href="https://discovery.ucl.ac.uk/10142031/1/NatMethOpinionRevised-Final.pdf" target="_blank" rel="noopener noreferrer">https://discovery.ucl.ac.uk/10142031/1/NatMethOpinionRevised-Final.pdf</a></p>
+<p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11348012/" target="_blank" rel="noopener noreferrer">https://pmc.ncbi.nlm.nih.gov/articles/PMC11348012/</a></p>
+<p><a href="https://medium.com/@satishlokhande5674/what-information-does-alphafold-use-from-the-protein-data-bank-44048e672100" target="_blank" rel="noopener noreferrer">https://medium.com/@satishlokhande5674/what-information-does-alphafold-use-from-the-protein-data-bank-44048e672100</a></p>
+<p><a href="https://github.com/google-deepmind/deepmind-research/tree/master" target="_blank" rel="noopener noreferrer">https://github.com/google-deepmind/deepmind-research/tree/master</a></p>
+<p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11319189/" target="_blank" rel="noopener noreferrer">https://pmc.ncbi.nlm.nih.gov/articles/PMC11319189/</a></p>
+<p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9710616/" target="_blank" rel="noopener noreferrer">https://pmc.ncbi.nlm.nih.gov/articles/PMC9710616/</a></p>
+<p><a href="https://www.youtube.com/watch?v=NN_uRCH7mrQ" target="_blank" rel="noopener noreferrer">https://www.youtube.com/watch?v=NN_uRCH7mrQ</a></p>
+<p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5588872/" target="_blank" rel="noopener noreferrer">https://pmc.ncbi.nlm.nih.gov/articles/PMC5588872/</a></p>
+<p><a href="https://lmu.pressbooks.pub/conceptsinbiology/chapter/protein-structure/" target="_blank" rel="noopener noreferrer">https://lmu.pressbooks.pub/conceptsinbiology/chapter/protein-structure/</a></p>
+<p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5588872/" target="_blank" rel="noopener noreferrer">https://pmc.ncbi.nlm.nih.gov/articles/PMC5588872/</a></p>
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="http://localhost:1313/tags/protein-structure-prediction/">Protein Structure Prediction</a></li>
+      <li><a href="http://localhost:1313/tags/alphafold/">Alphafold</a></li>
+      <li><a href="http://localhost:1313/tags/deep-learning/">Deep Learning</a></li>
+      <li><a href="http://localhost:1313/tags/protein-modeling/">Protein Modeling</a></li>
+      <li><a href="http://localhost:1313/tags/protein-folding/">Protein Folding</a></li>
+      <li><a href="http://localhost:1313/tags/protein-design/">Protein Design</a></li>
+      <li><a href="http://localhost:1313/tags/protein-engineering/">Protein Engineering</a></li>
+      <li><a href="http://localhost:1313/tags/protein-dynamics/">Protein Dynamics</a></li>
+      <li><a href="http://localhost:1313/tags/protein-stability/">Protein Stability</a></li>
+      <li><a href="http://localhost:1313/tags/protein-function/">Protein Function</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2026 jebrai</span> ·     
+    <span>
+    Powered by 
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">hugo</a>, <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">papermod</a>, &amp;
+        <a href="https://github.com/pmichaillat/hugo-website/" rel="noopener" target="_blank">hugo-website</a>.
+    </span>
+</footer>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = 'copy';
+
+        function copyingDone() {
+            copybutton.innerHTML = 'copied!';
+            setTimeout(() => {
+                copybutton.innerHTML = 'copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+</html>
