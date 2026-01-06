@@ -1,0 +1,43 @@
+{{/*
+Hugo image render hook
+Supports:
+- Standard Markdown images: ![alt](path)
+- Converter embeds: ![[image.png]]
+
+Assumes Model A (page bundles)
+*/}}
+
+{{- $dest := .Destination -}}
+{{- $alt := .Text | default "" -}}
+{{- $page := .Page -}}
+
+{{/* Converter-style embed: ![[image.png]] */}}
+{{- if and (not $dest) $alt -}}
+  {{- $img := $page.Resources.GetMatch $alt -}}
+  {{- if $img -}}
+    <figure class="md-image">
+      <img
+        src="{{ $img.RelPermalink }}"
+        alt="{{ $alt | plainify }}"
+        loading="lazy"
+      />
+    </figure>
+  {{- else -}}
+    {{ warnf "Image not found: %s (page: %s)" $alt $page.File.Path }}
+  {{- end -}}
+
+{{/* Standard Markdown image: ![alt](path) */}}
+{{- else -}}
+  {{- $img := $page.Resources.GetMatch $dest -}}
+  {{- if $img -}}
+    <figure class="md-image">
+      <img
+        src="{{ $img.RelPermalink }}"
+        alt="{{ $alt | plainify }}"
+        loading="lazy"
+      />
+    </figure>
+  {{- else -}}
+    <img src="{{ $dest | safeURL }}" alt="{{ $alt | plainify }}" />
+  {{- end -}}
+{{- end -}}

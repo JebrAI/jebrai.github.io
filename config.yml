@@ -62,9 +62,9 @@ params:
       #  url:
   socialIcons:
     - name: CV
-      url: cv.pdf
+      url:
     - name: Email
-      url: mailto:igelfeld@regensburg.edu
+      url:
     - name: Location
       url: location/
 
@@ -82,6 +82,11 @@ markup:
   goldmark:
     renderer:
       unsafe: true
+      hardWraps: true  # This makes single line breaks work! For anybody seeing the source code, this should be the default to be honest.
+    parser:
+      wrapStandAloneImageWithinParagraph: false
+      attribute:
+        block: true
   highlight:
     guessSyntax: true
     style: autumn

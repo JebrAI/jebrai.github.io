@@ -1,1 +1,66 @@
-<a href="{{ .Destination | safeURL }}"{{ with .Title}} title="{{ . }}"{{ end }}{{ if strings.HasPrefix .Destination "http" }} target="_blank"{{ end }}>{{- .Text | safeHTML -}}</a>
+{{- $destination := .Destination -}}
+{{- $text := .Text -}}
+{{- $title := .Title -}}
+
+{{- /* Check if it's a double-bracket link */ -}}
+{{- $isHeaderLink := false -}}
+{{- $isWikilink := false -}}
+
+{{- /* Pattern: [[#header]] or [[#header|text]] */ -}}
+{{- if hasPrefix $destination "[[#" -}}
+    {{- $isHeaderLink = true -}}
+    {{- /* Extract header from [[#header]] or [[#header|text]] */ -}}
+    {{- $content := strings.TrimPrefix "[[#" $destination -}}
+    {{- $content = strings.TrimSuffix "]]" $content -}}
+    
+    {{- /* Check if there's a pipe separator */ -}}
+    {{- if strings.Contains $content "|" -}}
+        {{- $parts := split $content "|" -}}
+        {{- $header := index $parts 0 -}}
+        {{- $text = index $parts 1 -}}
+        {{- $destination = printf "#%s" ($header | lower | replaceRE "[^\\w\\s-]" "" | replaceRE "[\\s_]+" "-" | strings.TrimRight "-") -}}
+    {{- else -}}
+        {{- $destination = printf "#%s" ($content | lower | replaceRE "[^\\w\\s-]" "" | replaceRE "[\\s_]+" "-" | strings.TrimRight "-") -}}
+        {{- $text = $content -}}
+    {{- end -}}
+{{- end -}}
+
+{{- /* Pattern: [[page]] or [[page|text]] */ -}}
+{{- if hasPrefix $destination "[[" -}}
+    {{- if not $isHeaderLink -}}
+        {{- $isWikilink = true -}}
+        {{- $content := strings.TrimPrefix "[[" $destination -}}
+        {{- $content = strings.TrimSuffix "]]" $content -}}
+        
+        {{- /* Check if there's a pipe separator */ -}}
+        {{- if strings.Contains $content "|" -}}
+            {{- $parts := split $content "|" -}}
+            {{- $link := index $parts 0 -}}
+            {{- $text = index $parts 1 -}}
+            {{- $destination = $link -}}
+        {{- else -}}
+            {{- $destination = $content -}}
+            {{- $text = $content -}}
+        {{- end -}}
+    {{- end -}}
+{{- end -}}
+
+{{- /* CRITICAL: Fix ALL header links with spaces (not just double-bracket) */ -}}
+{{- /* This catches regular markdown links like [text](#header with spaces) */ -}}
+{{- if and (hasPrefix $destination "#") (not $isHeaderLink) -}}
+    {{- /* Remove the # temporarily */ -}}
+    {{- $anchor := strings.TrimPrefix "#" $destination -}}
+    {{- /* Only fix if it contains spaces or needs slugification */ -}}
+    {{- if or (strings.Contains $anchor " ") (ne $anchor (lower $anchor)) -}}
+        {{- /* Convert to proper slug: lowercase, remove special chars, replace spaces with hyphens */ -}}
+        {{- $anchor = $anchor | lower | replaceRE "[^\\w\\s-]" "" | replaceRE "[\\s_]+" "-" | strings.TrimRight "-" -}}
+        {{- $destination = printf "#%s" $anchor -}}
+    {{- end -}}
+{{- end -}}
+
+{{- /* Render the link */ -}}
+<a href="{{ $destination | safeURL }}"
+   {{- with $title }} title="{{ . }}"{{ end -}}
+   {{- if strings.HasPrefix $destination "http" }} target="_blank" rel="noopener noreferrer"{{ end -}}>
+   {{- $text | safeHTML -}}
+</a>
