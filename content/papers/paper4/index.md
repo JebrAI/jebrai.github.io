@@ -3,8 +3,8 @@ title: "Alphafold: A Deep Dive into Architecture, Intuition and Implementation"
 date: 2025-10-29
 tags: ["protein structure prediction","alphafold","deep learning","protein modeling","protein folding","protein design","protein engineering","protein dynamics","protein stability","protein function"]
 author: ["Jebrai J."]
-description: "This markdown document explores the architecture and intuition behind AlphaFold and other. It is not by any means the final product as of december 2025." 
-summary: "This paper provides a comprehensive overview of the AlphaFold model, a deep learning model (Aas well as other models) for predicting protein structures. It explores the motivation behind each idea, problem statements, and solutions, as well as potential extensions and questions for further exploration."
+description: "This markdown document explores the architecture and intuition behind AlphaFold (1). It is the first refined publishing of other iterations, started in October 2025." 
+summary: "This paper (or document) provides a comprehensive overview of the AlphaFold protein folding model, a deep learning model, as well as other models ( briefly), for predicting protein structures. It explores the motivation behind each idea, problem statements, their solutions, as well as potential extensions for further exploration. Code illustration has been added too, it takes about half of the entire document. Many other topics are in potential for integration: primarily extension in cancer and medicine."
 cover:
     image: "paper4.png"
     alt:
@@ -2950,7 +2950,9 @@ Refinement using Rosetta REF15 energy function, or GROMACS, AMBER, OpenMM.
 Given a novel, non-seen-before protein sequence: `MSVTQRFIAKQ`
 We generate a MSA using an external DB (PSI-BLAST),  compute 1D statistics to lift to 2D using broadcasting. Then, after the output of the NN, we use the distance map (distograms) and torsion angle initialization to construct a 3D, folded protein using the aforementioned tools. 
 
-We learned about some protein components, protein formalisms, cancer structure viewpoint, pyramid weights and symmetries as well as other coding techniques and their motivations. We elaborated on most code cells with comments, added shapes, explained many other features, answered questions that I asked and elaborated on those I did ask on too (some are weird but tip off the theory and engages abit). We also had a reinforcement learning and disease prediction segment that may aid anyone trying to connect these to proteins or alphafold variants and other models. We had insights spreadout the article and many more. I hope you didn't skip here in favor of checking out how long this document is (that's okay though). 
+We learned about some protein components, protein formalisms, cancer structure viewpoint, pyramid weights and symmetries as well as other coding techniques and their motivations. We elaborated on most code cells with comments, added shapes, explained many other features, answered questions that I asked and elaborated on those I did ask on too (some are weird but tip off the theory and engages abit). We also had a reinforcement learning and disease prediction segment that may aid anyone trying to connect these to proteins or alphafold variants and other models. We had insights spreadout the article and many more. Other information regarding the future of this document is strapped to the summary of the document (header), found in the link [here](https://github.com/JebrAI/jebrai.github.io/edit/main/content/papers/paper4/index.md). 
+
+I hope you didn't skip here in favor of checking out how long this document is (that's okay though). 
 
 [Continue]
 
